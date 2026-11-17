@@ -11,6 +11,60 @@
     "proof_line": "",
     "_proof_note": "One true, measurable sentence used in warm-intro notes, e.g. 'I run technical validations that win about 70% of proofs of concept.' Leave empty to omit it."
   },
+  "angles": {
+    "_note": "Angles are the labels shown on each job (and used for conversion stats). 'terms' are theme words that make the rules-only scorer pick that angle; 'describe' tells the model what the label means. Edit freely: the setup interview writes angles in your field's language.",
+    "default": "Cloud-native",
+    "infra_angle": "",
+    "list": [
+      {
+        "name": "Observability",
+        "describe": "observability, monitoring, incident response or AIOps products for cloud-native and DevOps teams",
+        "terms": [
+          "observability",
+          "opentelemetry",
+          "monitoring",
+          "aiops",
+          "incident management",
+          "ai sre"
+        ]
+      },
+      {
+        "name": "Cloud-native",
+        "describe": "Kubernetes, containers, platform engineering or DevOps tooling",
+        "terms": [
+          "kubernetes",
+          "k8s",
+          "cloud native",
+          "cloud-native",
+          "devops",
+          "platform engineering",
+          "gitops"
+        ]
+      },
+      {
+        "name": "AI Infrastructure",
+        "describe": "AI/ML/GPU infrastructure or MLOps platforms",
+        "terms": [
+          "mlops",
+          "llmops",
+          "ml platform",
+          "model serving",
+          "gpu",
+          "ai infrastructure"
+        ]
+      },
+      {
+        "name": "Other",
+        "describe": "the core product is none of these",
+        "terms": []
+      }
+    ]
+  },
+  "judge": {
+    "_note": "Plain-English definitions the scoring model uses. core_theme says what counts as a strong match. infra_theme is optional (a lower-weight adjacent market); leave empty to turn it off.",
+    "core_theme": "the role centers on observability, monitoring or incident-response products, Kubernetes and cloud-native platforms, DevOps or SRE tooling, or AI infrastructure and MLOps, sold to enterprise customers",
+    "infra_theme": ""
+  },
   "sources": {
     "ats": {
       "greenhouse": {

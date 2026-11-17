@@ -60,7 +60,7 @@ Claude asks a few questions at a time and offers a suggested answer for each. Wh
 | Topic | What to have ready |
 |---|---|
 | **You** | Full name, current job title, city and state, path to your master resume, a folder for application files. |
-| **Roles** | The titles you want (and the ones you never want), seniority words, 5 to 10 words that would make a posting a great fit, a one-line description of your ideal role. |
+| **Roles** | The titles you want (and the ones you never want), seniority words, 5 to 10 words that would make a posting a great fit, a one-line description of your ideal role. Claude turns these into your "angles" (labels that group jobs by flavor) and the definition of a strong match. |
 | **Location** | Remote only, or remote plus a home area (cities near you). |
 | **Pay** | Base-salary floor, OTE floor if your pay is mostly variable, and the level that earns a bonus point. |
 | **Companies** | Companies to never show. Companies to watch: Claude finds and verifies each one's job board. A handful is plenty to start. |

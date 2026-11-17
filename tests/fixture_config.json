@@ -456,5 +456,99 @@
     "discover_every_days": 3,
     "discover_max_results": 30,
     "resume_master": ""
+  },
+  "angles": {
+    "default": "Cloud/K8s",
+    "infra_angle": "Infra/Data",
+    "list": [
+      {
+        "name": "FinOps",
+        "describe": "cloud/K8s cost",
+        "terms": [
+          "finops",
+          "cloud cost",
+          "cost optimization"
+        ]
+      },
+      {
+        "name": "AIOps",
+        "describe": "observability and incident response",
+        "terms": [
+          "aiops",
+          "ai sre",
+          "incident management",
+          "observability platform"
+        ]
+      },
+      {
+        "name": "AI-K8s",
+        "describe": "AI/ML infrastructure on Kubernetes",
+        "terms": [
+          "mlops",
+          "llmops",
+          "ml platform",
+          "model serving",
+          "gpu",
+          "ai infrastructure"
+        ]
+      },
+      {
+        "name": "AI Platform",
+        "describe": "GenAI and LLM platforms",
+        "terms": [
+          "llm",
+          "llms",
+          "large language models",
+          "genai",
+          "generative ai",
+          "gen ai",
+          "agentic",
+          "ai agents",
+          "foundation models",
+          "evals",
+          "rag",
+          "ai platform",
+          "model context protocol",
+          "prompt engineering"
+        ]
+      },
+      {
+        "name": "VM Migration",
+        "describe": "VM estate migration",
+        "terms": [
+          "vmware migration",
+          "migrate from vmware",
+          "vmware alternative",
+          "vmware exit",
+          "kubevirt",
+          "openshift virtualization",
+          "vm migration",
+          "virtual machine migration",
+          "vm modernization",
+          "vsphere migration",
+          "virtualization migration",
+          "hypervisor migration"
+        ]
+      },
+      {
+        "name": "Cloud/K8s",
+        "describe": "Kubernetes and cloud infrastructure",
+        "terms": []
+      },
+      {
+        "name": "Infra/Data",
+        "describe": "enterprise infrastructure and data protection",
+        "terms": []
+      },
+      {
+        "name": "Other",
+        "describe": "none of these",
+        "terms": []
+      }
+    ]
+  },
+  "judge": {
+    "core_theme": "the role centers on Kubernetes / FinOps / cloud infrastructure",
+    "infra_theme": "the role centers on enterprise infrastructure, storage or data protection"
   }
 }

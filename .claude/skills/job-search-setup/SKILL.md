@@ -31,6 +31,8 @@ Read their resume if they gave one (it stays local). Then propose, and let them 
 - **Seniority words** that earn a bonus (`seniority_bonus`).
 - **Themes** (`domain_strong`, `domain_weak`): the technologies, markets or skills that make a posting a good fit. Strong = each hit adds a point; weak = tie-breakers only. Ask: "Which 5 to 10 words would you hope to see in a perfect posting?"
 - A one-line **search scope** for web discovery (`profile.search_scope`), e.g. "a senior remote-US role, or hybrid in Denver".
+- **Angles** (`angles.list`): 3 to 6 short labels that group their jobs by flavor (for a pre-sales engineer in observability: "Observability", "Cloud-native", "AI Infrastructure", "Other"). For each: `name`, a `describe` sentence for the scoring model, and `terms` (theme words that pick that angle in rules-only mode). Set `angles.default` to the catch-all label. Write them in the user's field's language; the shipped angles are only an example.
+- **Core theme** (`judge.core_theme`): one sentence finishing "a strong match is a role that centers on ...". Leave `judge.infra_theme` empty unless they want a lower-weight adjacent market.
 - 3 to 6 **web queries** for discovery (`web_queries`), written the way they would search a job board.
 Optional tracks, off unless they ask: `platform_roles`, `csm_roles`, `domain_infra`, `ai_lab_companies`, `k8s_only_companies`. Mention they exist; do not push them.
 
@@ -49,7 +51,7 @@ Explain in plain words that scoring and discovery call Claude headlessly, and th
 Ask whether they want a daily scheduled run (`scripts/schedule.sh install`, macOS launchd). Do not install it yourself; give them the command.
 
 ## Step 6: write it
-1. Draft the answers as one JSON file in the scratchpad or a temp file (NOT in the project): keys `profile`, `targeting`, `scoring` (only if they changed weights), `web_queries`, `sources`, `automation`, and `profile_markdown` (the bullet list that goes under "## Candidate profile": candidate, current role, target titles, positioning themes, location, level, excluded companies, compensation rule, and any hard limits, written plainly and truthfully; the scoring judge reads it literally).
+1. Draft the answers as one JSON file in the scratchpad or a temp file (NOT in the project): keys `profile`, `targeting`, `angles`, `judge`, `scoring` (only if they changed weights), `web_queries`, `sources`, `automation`, and `profile_markdown` (the bullet list that goes under "## Candidate profile": candidate, current role, target titles, positioning themes, location, level, excluded companies, compensation rule, and any hard limits, written plainly and truthfully; the scoring judge reads it literally).
 2. Show them a short summary (not the raw JSON) and ask "Does this look right?". Fix what they flag.
 3. Run `python3 scripts/setup.py --apply <file>`. It validates, backs up any earlier `config.json`, writes `config.json` and the profile section, creates the applications folder, and marks setup done. If it refuses, fix what it lists.
 4. Delete the temp JSON.

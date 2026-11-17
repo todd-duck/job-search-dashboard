@@ -142,10 +142,10 @@ def score_saved(limit=60, log=print):
                 continue
             j = kept[0]
             j["description"] = j["description"][:6000]
-            if j["prescore"]["tier"] == "C":  # no Kubernetes/FinOps/AI-infra/infra theme: the daily run drops these too
+            if j["prescore"]["tier"] == "C":  # no theme from your profile: the daily run drops these too
                 updates[t["id"]] = {"id": t["id"], "score": f"{j['prescore']['points']} (C)", "salary": fj.salary_label(j) or "—",
                                     "why": "Saved on your LinkedIn Job Tracker.",
-                                    "gaps": "No Kubernetes, FinOps, AI-infrastructure or infrastructure theme in the posting, so the search rules score it C."}
+                                    "gaps": "None of your profile themes appear in the posting, so the search rules score it C."}
                 continue
             j["_id"] = t["id"]
             ok, locnote = rc.location_ok(j)

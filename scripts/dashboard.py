@@ -212,7 +212,7 @@ def load_jobs():
             if _d:
                 out[-1]["intros"] = {**_d, "drafts": intr.drafts(_d, applied=out[-1]["status_group"] in ("Applied", "Interviewing"))}
     sugg = [{"line": l, "text": (SUGG_RE.match(l) or [None, None, l])[2], **classify_suggestion(l)} for l in lj.parse_jobs(lj.read_jobs())[2]]
-    return {"run_status": load_run_status(), "progress": load_progress(), "jobs": out, "suggestions": sugg, "config": cfg, "status_choices": lj.STATUS_CHOICES, "status_meta": statuses.meta(), "apply_runs": _load_runs(), "intro_runs": _load_intro_runs(), "saved_run": _load_saved_run(),
+    return {"angles": [a["name"] for a in (settings.load().get("angles") or {}).get("list", [])], "run_status": load_run_status(), "progress": load_progress(), "jobs": out, "suggestions": sugg, "config": cfg, "status_choices": lj.STATUS_CHOICES, "status_meta": statuses.meta(), "apply_runs": _load_runs(), "intro_runs": _load_intro_runs(), "saved_run": _load_saved_run(),
             "why_not": {**journey.analysis(out, seen), "ai": _load_why_ai()}, "journey_options": journey.OPTIONS,
             "funnel_stats": compute_funnel_stats(out), "funnel_options": {"stages": lj.FUNNEL_STAGES, "outcomes": lj.FUNNEL_OUTCOMES,
                                                                        "sources": lj.FUNNEL_SOURCES, "levels": lj.FUNNEL_LEVELS}}

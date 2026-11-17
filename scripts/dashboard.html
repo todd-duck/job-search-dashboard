@@ -418,7 +418,7 @@ function render() {
   chips($("f-section"), "section", ["Active", "Archive", "Archive file"]);
   chips($("f-status"), "status", uniq("status_group", [...new Set([...meta().order, ...(meta().choices || [])])]));
   chips($("f-tier"), "tier", uniq("tier", ["A", "B", "C"]));
-  chips($("f-angle"), "angle", uniq("angle", ["FinOps", "AI-K8s", "AI Platform", "AIOps", "Cloud/K8s", "VM Migration", "Infra/Data"]));
+  chips($("f-angle"), "angle", uniq("angle", DATA.angles || []));
 
   $("head").innerHTML = COLS.map(([k, label]) =>
     `<th data-k="${k}">${label} <span class="arrow">${state.sort[0] === k ? (state.sort[1] > 0 ? "▲" : "▼") : ""}</span></th>`).join("");

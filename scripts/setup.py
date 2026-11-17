@@ -70,6 +70,7 @@ def write_profile_section(markdown):
         raise ValueError(f"{os.path.basename(src)} has no '## Candidate profile' section to replace")
     new = text[:m.start(2)] + markdown.strip() + "\n" + text[m.end(2):]
     new = re.sub(r"\n> This is a fictional example.*?\n", "\n", new)
+    new = re.sub(r"\n{3,}", "\n\n", new)
     new = re.sub(r"^# Job Search: .*$", "# Job Search", new, count=1, flags=re.M)
     open(INSTR, "w").write(new)
 
@@ -78,6 +79,10 @@ def apply(path):
     answers = json.load(open(path))
     base = json.load(open(settings.PATH)) if os.path.exists(settings.PATH) else json.load(open(settings.EXAMPLE))
     md = answers.pop("profile_markdown", "")
+    if answers.get("sources", {}).get("ats"):  # the user's boards replace the example's, they are not added to them
+        base["sources"]["ats"] = {k: {} for k in base["sources"]["ats"]}
+    if "companies" in answers.get("sources", {}).get("watch_no_api", {}):
+        base["sources"]["watch_no_api"]["companies"] = {}
     merged = deep_merge(base, answers)
     err, warn = problems(merged)
     if err:

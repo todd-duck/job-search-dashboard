@@ -16,6 +16,9 @@ def fixture_config():
     return json.load(open(FIXTURE))
 
 
+rc.configure_angles(fixture_config())  # the angle names and region rules the tests assume
+
+
 
 def make_job(title="Senior Solutions Engineer", company="Acme", url=None, desc="We run Kubernetes and FinOps programs.", **kw):
     url = url or f"https://jobs.example.com/{company}/{title}".replace(" ", "-")
