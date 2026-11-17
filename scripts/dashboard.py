@@ -155,7 +155,7 @@ def open_folder(path):
     known = {v.get("prepared") for v in lj.load_seen().values() if v.get("prepared")}
     if path not in known or not os.path.isdir(path):
         raise ValueError("That folder isn't a recorded application folder, or it no longer exists.")
-    subprocess.run(["open", path], check=False)
+    subprocess.run(["open" if sys.platform == "darwin" else "xdg-open", path], check=False)
     return {"message": "Opened in Finder."}
 
 

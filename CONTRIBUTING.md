@@ -17,5 +17,5 @@ Run `python3 scripts/setup.py --support-bundle`, read the output, and paste it i
 ## Making changes
 
 - Settings belong in `config.json` (documented in `config.example.json`), not hard-coded. Identity, locations and company names must never appear in code or skills.
-- New features that change what gets searched should be off by default, like `platform_roles` and `csm_roles`.
+- New features that change what gets searched should be off by default and driven by `config.json`. See `docs/FILTER-IDEAS.md` for ideas that are deliberately not built in.
 - Update `README.md` and the relevant `SKILL.md` when behavior changes.

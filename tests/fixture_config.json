@@ -293,133 +293,6 @@
       "Microsoft"
     ],
     "_excluded_note": "Companies you never want to see (names, case-insensitive). The dashboard can add to this when you Pass a job and choose Exclude company.",
-    "k8s_only_companies": [
-      "Hooli",
-      "Zscaler",
-      "Cloudflare"
-    ],
-    "k8s_only_terms": [
-      "kubernetes",
-      "k8s",
-      "eks",
-      "gke",
-      "aks",
-      "openshift"
-    ],
-    "k8s_only_title_skip": [
-      "security",
-      "identity",
-      "compliance"
-    ],
-    "_k8s_only_note": "Optional. Broad vendors listed in k8s_only_companies are kept only for roles whose posting names a k8s_only_terms word and whose title has no k8s_only_title_skip word.",
-    "domain_infra": [
-      "data protection",
-      "data security",
-      "backup",
-      "disaster recovery",
-      "ransomware",
-      "cyber resilience",
-      "storage"
-    ],
-    "_infra_note": "Optional lower-weight theme (adjacent infrastructure markets). Postings with scoring.infra_min_hits of these words are scored scoring.infra_adjust.",
-    "ai_lab_companies": [
-      "Anthropic",
-      "OpenAI",
-      "Cohere"
-    ],
-    "_ai_lab_note": "Optional. Companies listed here are scored lowest (scoring.ai_lab_away), not dropped, when the role is on-site or territory-based away from you.",
-    "platform_roles": {
-      "titles": [
-        "platform engineer",
-        "kubernetes engineer"
-      ],
-      "_note": "Optional stretch track. Add titles such as 'platform engineer' to let them through only when the posting names a require_k8s term and a require_handson tool. Empty = off.",
-      "skip_title": [
-        "frontend",
-        "front-end",
-        "front end",
-        "backend",
-        "back-end",
-        "full-stack",
-        "full stack",
-        "salesforce",
-        "data",
-        "documentation",
-        "design systems",
-        "design system",
-        "macos",
-        "chromeos",
-        "windows",
-        "client platform",
-        "mobile",
-        "ios",
-        "android",
-        "security",
-        "network",
-        "database",
-        "dba",
-        "it systems",
-        "new grad",
-        "graduate",
-        "embedded",
-        "firmware",
-        "game",
-        "payments",
-        "billing",
-        "ml platform",
-        "machine learning",
-        "software engineer"
-      ],
-      "require_k8s": [
-        "kubernetes",
-        "k8s",
-        "eks",
-        "gke",
-        "aks",
-        "openshift",
-        "helm"
-      ],
-      "require_handson": [
-        "terraform",
-        "opentofu",
-        "argo",
-        "argocd",
-        "flux",
-        "gitops",
-        "helm",
-        "ansible",
-        "ci/cd",
-        "crossplane",
-        "pulumi"
-      ],
-      "min_handson": 1
-    },
-    "_platform_note": "Platform Engineer roles are a stretch track: scored by scoring.platform_adjust and tagged so you can see them. Leave titles empty to turn it off.",
-    "csm_roles": {
-      "titles": [
-        "customer success manager"
-      ],
-      "require_terms": [
-        "kubernetes",
-        "k8s",
-        "eks",
-        "gke",
-        "aks",
-        "openshift",
-        "helm",
-        "karpenter",
-        "container orchestration",
-        "containers",
-        "cloud native",
-        "cloud-native",
-        "cncf",
-        "devops",
-        "platform engineering"
-      ],
-      "salary_floor": 180000,
-      "ote_floor": 247000
-    },
-    "_csm_note": "Optional. Plain 'customer success manager' titles are kept only when the posting also names a require_terms word, with their own salary floors. Empty titles = off.",
     "home_state": "TX"
   },
   "scoring": {
@@ -434,13 +307,10 @@
     "max_new_rows_per_run": 25,
     "territory_home": 1,
     "territory_unclear": -1,
-    "infra_min_hits": 2,
-    "infra_adjust": -1,
-    "infra_a_salary_lo": 200000,
-    "infra_a_salary_hi": 250000,
-    "ai_lab_away": -3,
-    "platform_adjust": -2,
-    "remote_or_home": 1
+    "remote_or_home": 1,
+    "tam_adjust": -1,
+    "post_sales_adjust": -2,
+    "_pay_note": "post_sales_adjust and tam_adjust subtract points from roles that are mainly support/delivery or Technical Account Manager roles. Set both to 0 if that distinction does not apply to you."
   },
   "linkedin_tracker": "~/.claude/skills/linkedin-easy-apply/data/tracking.csv",
   "jobs_file": {
@@ -459,7 +329,6 @@
   },
   "angles": {
     "default": "Cloud/K8s",
-    "infra_angle": "Infra/Data",
     "list": [
       {
         "name": "FinOps",
@@ -536,11 +405,6 @@
         "terms": []
       },
       {
-        "name": "Infra/Data",
-        "describe": "enterprise infrastructure and data protection",
-        "terms": []
-      },
-      {
         "name": "Other",
         "describe": "none of these",
         "terms": []
@@ -549,6 +413,8 @@
   },
   "judge": {
     "core_theme": "the role centers on Kubernetes / FinOps / cloud infrastructure",
-    "infra_theme": "the role centers on enterprise infrastructure, storage or data protection"
+    "_note": "Plain-English definition the scoring model uses. core_theme says what counts as a strong match.",
+    "drop_engineering_roles": true,
+    "_engineering_note": "true drops pure software/ML/backend engineering roles (right for customer-facing roles). Set false if engineering roles are what you want."
   }
 }

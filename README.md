@@ -29,7 +29,9 @@ You need:
 5. Optional: Chrome with the **Claude in Chrome** extension, only for the LinkedIn and warm-intro skills.
 6. Your **master resume** as a `.docx` file, if you want tailored resumes. It is the single source of truth: tailoring never adds anything that is not in it.
 
-Tested on macOS. Linux should work for everything except the daily scheduler (`scripts/schedule.sh` uses macOS launchd; use cron instead). Windows is untested; WSL is your best bet.
+**Platforms.** Tested on macOS. Linux should work for everything except the daily scheduler (`scripts/schedule.sh` uses macOS launchd; use cron instead).
+
+**Windows is not supported natively.** The project uses `bash` scripts, `lsof`, POSIX signals and `soffice` on the path, and the Claude in Chrome skills are untested there. If you are on Windows, the best route is **WSL2** (Ubuntu) with Python, git and Claude Code installed inside it. That is untested too. If you get it working, please share what you changed in a [Discussion](https://github.com/todd-duck/job-search-dashboard/discussions) or a pull request, and we will add a Windows section.
 
 ## Install (about 5 minutes)
 
@@ -134,6 +136,10 @@ Two per-click caps live near the top of `scripts/dashboard.py`: `APPLY_BUDGET_US
 
 > **Use at your own risk.** Automating LinkedIn may conflict with LinkedIn's User Agreement. Read it before you decide. Both skills are deliberately slow, read-only where they can be, and never solve CAPTCHAs. You are responsible for your account.
 
+## Keeping it plain
+
+The rules are general on purpose: titles, location, pay floor, excluded companies, posting age, and scoring from the themes you name. Special-case filters are not built in. [docs/FILTER-IDEAS.md](docs/FILTER-IDEAS.md) lists ideas (stricter rules for particular companies, stretch role types, and more) and how to ask Claude to add one.
+
 ## How it works
 
 ```
@@ -168,7 +174,7 @@ sources (company boards, feeds, web discovery)
 
 ## Getting help
 
-- **Questions and "how do I...":** open a [GitHub Discussion](https://github.com/todd-duck/job-search-dashboard/discussions) (Q&A) if it is enabled, otherwise an issue labeled `question`.
+- **Questions and "how do I...":** open a [GitHub Discussion](https://github.com/todd-duck/job-search-dashboard/discussions) (Q&A).
 - **Install or first-run trouble:** open an issue using the *Install or setup help* template. Run `python3 scripts/setup.py --support-bundle` first and paste the output. It hides config values, emails, numbers and links, but read it before posting.
 - **Bugs and ideas:** open an issue. Please never paste your resume, tracker, or real config.
 

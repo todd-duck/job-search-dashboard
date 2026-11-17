@@ -19,7 +19,6 @@ def fixture_config():
 rc.configure_angles(fixture_config())  # the angle names and region rules the tests assume
 
 
-
 def make_job(title="Senior Solutions Engineer", company="Acme", url=None, desc="We run Kubernetes and FinOps programs.", **kw):
     url = url or f"https://jobs.example.com/{company}/{title}".replace(" ", "-")
     j = {"source": "greenhouse", "company": company, "title": title, "location": "Remote - United States", "remote": True,
@@ -395,25 +394,6 @@ class TestJourney(unittest.TestCase):
         self.assertIsNone(journey.silent_days({**old, "events": [{"type": "Recruiter call", "date": "2026-01-02", "result": "Passed"}]}, "Applied"))
 
 
-class TestCsmRoles(unittest.TestCase):
-    """Plain 'Customer Success Manager' shows only with a Kubernetes/cloud-native term and a top salary >= $180K."""
-
-    def test_csm_filter(self):
-        import fetch_jobs as f
-        cfg = fixture_config()
-        cfg["targeting"]["csm_roles"] = {"titles": ["customer success manager"], "require_terms": ["kubernetes", "cloud-native"], "salary_floor": 180000, "ote_floor": 247000}
-        cfg["targeting"]["salary_floor"] = 175000
-        mk = lambda co, ti, desc: dict(company=co, title=ti, location="Remote, United States", description=desc, url="https://x.com/" + co,
-                                       source="greenhouse:x", posted_at=None, salary=None, remote=True)
-        rej = []
-        kept, _, _ = f.prefilter([mk("A", "Customer Success Manager", "Kubernetes adoption. $190,000 - $210,000 base"),
-                                  mk("B", "Customer Success Manager", "Renewals for SaaS accounts"),
-                                  mk("C", "Customer Success Manager", "Cloud-native. $150,000 - $170,000 base"),
-                                  mk("D", "Director, Customer Success Manager", "Kubernetes")], cfg, 21, rej)
-        self.assertEqual([k["company"] for k in kept], ["A"])
-        self.assertEqual({j["company"]: r for j, r in rej}, {"B": "csm role: no Kubernetes/cloud-native term", "C": "salary below floor", "D": "title skip word"})
-
-
 class TestCoverLetterFlag(unittest.TestCase):
     """The per-row cover-letter checkbox: explicit choice wins, otherwise A-tier rows get a letter."""
 
@@ -489,7 +469,7 @@ class TestLegit(unittest.TestCase):
         self.assertEqual(self.legit.assess(self.job(posted_at="2026-10-18", url="new"), [], seen, self.today)["label"], "fresh")
 
 
-class TestInfraTheme(unittest.TestCase):
+class TestTiering(unittest.TestCase):
     def setUp(self):
         import fetch_jobs as f
         self.f = f
@@ -503,19 +483,12 @@ class TestInfraTheme(unittest.TestCase):
         kept, _, _ = self.f.prefilter([self.job(title, desc, sal)], self.cfg, 90)
         return kept[0]["prescore"]["tier"] if kept else None
 
-    def test_infra_only_is_b(self):
-        d = "Sell data protection, backup and disaster recovery on enterprise storage. Remote US."
-        self.assertEqual(self.tier("Senior Sales Engineer", d, "$186,000-$232,000 OTE"), "B")
-
-    def test_infra_high_salary_is_a(self):
-        d = "Sell data protection, backup and disaster recovery on enterprise storage. Remote US."
-        self.assertEqual(self.tier("Senior Sales Engineer", d, "$210,000-$260,000 base"), "A")
 
     def test_single_infra_term_is_c(self):
         self.assertEqual(self.tier("Senior Sales Engineer", "We sell backup software. Remote US.", ""), "C")
 
 
-class TestFunnelCapture(TestInfraTheme):
+class TestFunnelCapture(TestTiering):
     def run_pf(self, jobs):
         rejects = []
         kept, reasons, _ = self.f.prefilter(jobs, self.cfg, 90, rejects)
@@ -540,20 +513,9 @@ class TestFunnelCapture(TestInfraTheme):
         kept, _, _ = self.run_pf([self.mk("Partner Solutions Architect - AWS", loc="Remote-NAMER")])[:3]
         self.assertEqual(len(kept), 1)
 
-    def test_k8s_only_companies(self):
-        def co(title, desc, company):
-            return {**self.mk(title), "company": company, "description": desc, "url": f"u-{company}-{title}"}
-        k8s = co("Senior Solutions Engineer", "Kubernetes platform customers. Remote US.", "Cloudflare")
-        plain = co("Senior Solutions Engineer", "Sell our CDN. Remote US.", "Zscaler")
-        sec = co("Security Solutions Engineer", "Kubernetes security. Remote US.", "Zscaler")
-        other = co("Senior Solutions Engineer", "Sell our CDN. Remote US.", "Acme")
-        kept, reasons, _ = self.run_pf([k8s, plain, sec, other])
-        self.assertEqual({j["company"] for j in kept}, {"Cloudflare", "Acme"})
-        self.assertEqual(reasons["k8s-only company: security title"], 1)
-        self.assertEqual(reasons["k8s-only company: no Kubernetes term"], 1)
 
-    def test_technical_customer_success_manager_is_not_skipped(self):
-        kept, _, _ = self.run_pf([self.mk("Senior Technical Customer Success Manager")])
+    def test_technical_account_manager_is_not_skipped_by_the_manager_word(self):
+        kept, _, _ = self.run_pf([self.mk("Senior Technical Account Manager")])
         self.assertEqual(len(kept), 1)
 
 
@@ -679,7 +641,7 @@ class TestOteLabel(unittest.TestCase):
         self.assertEqual(rc.fj.salary_label(j), "$190,000 - $230,000")
 
 
-class TestSalaryFloorTopEnd(TestInfraTheme):
+class TestSalaryFloorTopEnd(TestTiering):
     """The floor applies to the top of the stated range: a range that reaches it is kept and scored."""
     D = "Kubernetes FinOps cost optimization pre-sales demos and technical evaluations. Remote US."
 
@@ -743,62 +705,6 @@ class TestSavedImport(unittest.TestCase):
         self.assertIn("- **Why it fits:** fits", md)
         self.assertIn("- **Gaps / red flags:** none", md)
         self.assertEqual(md.count("### 001"), 1)
-
-
-class TestAiLabs(unittest.TestCase):
-    """AI labs: on-site/territory-elsewhere and residency are scored lowest, not dropped; others unchanged."""
-    def setUp(self):
-        import fetch_jobs as f
-        self.f = f
-        self.cfg = fixture_config()
-        self.cfg["targeting"].update(title_skip=["zzz-never-matches"], excluded_companies=[], salary_floor=0, ote_floor=0)
-        self.cfg["targeting"].update(ai_lab_companies=["Anthropic"], domain_strong=sorted(set(self.cfg["targeting"]["domain_strong"]) | {"llm", "generative ai"}))
-        self.cfg["scoring"]["ai_lab_away"] = -3
-
-    def job(self, company, loc="San Francisco, CA (Hybrid)", desc="We build LLM and generative AI platforms for enterprises."):
-        return {"source": "greenhouse", "company": company, "title": "Solutions Architect", "location": loc, "remote": False,
-                "url": f"u/{company}/{loc}", "posted_at": date.today().isoformat(), "salary": "", "description": desc}
-
-    def run_pf(self, j):
-        self.f.load_seen = lambda cfg: (set(), set())
-        return self.f.prefilter([j], self.cfg, 90)
-
-    def test_lab_onsite_elsewhere_is_kept_with_penalty(self):
-        kept, reasons, _ = self.run_pf(self.job("Anthropic"))
-        self.assertEqual(len(kept), 1)
-        self.assertTrue(kept[0]["soft_away"])
-        self.assertIn("AI lab", " ".join(kept[0]["prescore"]["breakdown"]))
-
-    def test_non_lab_onsite_elsewhere_is_still_dropped(self):
-        kept, reasons, _ = self.run_pf(self.job("Acme"))
-        self.assertEqual(kept, [])
-        self.assertIn("location other", reasons)
-
-    def test_llm_terms_count_as_theme(self):
-        kept, _, _ = self.run_pf(self.job("Acme", loc="Remote - United States"))
-        self.assertIn("llm", kept[0]["strong_hits"])
-
-    def test_decide_soft_location(self):
-        f = {"core_match": "strong", "onsite_or_relocation_elsewhere": True, "post_sales": False, "extra_themes": 0}
-        self.assertTrue(rc.decide(f)["drop"])
-        d = rc.decide(f, "", soft_location=True)
-        self.assertEqual(d["drop"], "")
-        self.assertEqual(d["adjust"], rc.AI_LAB_AWAY)
-        self.assertEqual(rc.AI_LAB_AWAY, self.cfg["scoring"]["ai_lab_away"])
-
-    def test_soft_location_still_drops_other_reasons(self):
-        f = {"core_match": "strong", "people_manager": True, "onsite_or_relocation_elsewhere": True}
-        self.assertEqual(rc.decide(f, "", soft_location=True)["drop"], "people-manager role")
-
-    def test_lab_non_us_location_is_still_dropped(self):
-        kept, reasons, _ = self.run_pf(self.job("Anthropic", loc="London, UK"))
-        self.assertEqual(kept, [])
-
-    def test_location_ok_accepts_soft_away_lab(self):
-        j = {"location_class": "other", "location": "San Francisco, CA", "description": "", "soft_away": True}
-        self.assertTrue(rc.location_ok(j)[0])
-        j["soft_away"] = False
-        self.assertFalse(rc.location_ok(j)[0])
 
 
 class TestStatusesAndStore(unittest.TestCase):

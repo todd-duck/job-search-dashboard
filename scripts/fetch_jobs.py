@@ -547,21 +547,11 @@ def salary_label(j, pct=OTE_BASE_PCT):
     return text
 
 
-def infra_salary_high(j, sc):
-    """True when the stated pay is above the average of logged roles (low end or top end)."""
-    sal = j.get("salary_parsed") or {}
-    lo = sal.get("base_lo") if "base_hi" in sal else sal.get("ote_lo")
-    hi = sal.get("base_hi") or sal.get("ote_hi") or 0
-    return bool((lo and lo >= sc["infra_a_salary_lo"]) or hi >= sc["infra_a_salary_hi"])
-
-
 def prescore(j, t, sc, strong):
     """Deterministic part of the rubric. Claude adds judgment (post-sales -2, people manager, learned prefs)."""
     pts, why = sc["core_title"], ["core title +3"]
     if words_re(t["seniority_bonus"]).search(j["title"]):
         pts += sc["seniority"]; why.append(f"seniority +{sc['seniority']}")
-    if j.get("platform_role"):
-        pts += sc.get("platform_adjust", 0); why.append(f"platform role {sc.get('platform_adjust', 0)}")
     hits = j["strong_hits"]
     h = min(len(hits), sc["domain_hit_max"]) * sc["domain_hit_each"]
     if h:
@@ -569,21 +559,14 @@ def prescore(j, t, sc, strong):
     if j["location_class"] in ("remote-us", "home"):
         pts += sc.get("remote_or_home", 1); why.append(f"{j['location_class']} +1")
     terr = j["territory"]
-    if j.get("soft_away"):
-        pts += sc.get("ai_lab_away", -3); why.append(f"AI lab, on-site/territory elsewhere {sc.get('ai_lab_away', -3)}")
-    elif terr == "favored":
+    if terr == "favored":
         pts += sc["territory_home"]; why.append(f"home territory +{sc['territory_home']}")
     elif terr == "unclear":
         pts += sc["territory_unclear"]; why.append(f"territory unclear {sc['territory_unclear']}")
     sal = j.get("salary_parsed") or {}
     if sal.get("base_hi", 0) >= t["salary_bonus_at"] or (not sal.get("base_hi") and sal.get("ote_hi", 0) * OTE_BASE_PCT >= t["salary_bonus_at"]):
         pts += sc["salary_top_at_or_above_bonus"]; why.append("salary +1")
-    if not hits and j.get("infra_hits"):
-        pts += sc["infra_adjust"]; why.append(f"infra/data-protection theme {sc['infra_adjust']} ({', '.join(j['infra_hits'][:4])})")
-        tier = "A" if infra_salary_high(j, sc) and pts >= sc["b_tier"] else "B" if pts >= sc["b_tier"] else "C"
-        if tier == "A":
-            why.append("above-average salary -> A")
-    elif not hits:
+    if not hits:
         tier = "C"; why.append("no must-match theme -> C")
     else:
         tier = "A" if pts >= sc["a_tier"] else "B" if pts >= sc["b_tier"] else "C"
@@ -618,30 +601,16 @@ def prefilter(jobs, cfg, days, rejects=None):
     """rejects: optional list; every dropped job is appended as (job, reason) so main() can persist what was filtered out."""
     t = cfg["targeting"]
     sc = cfg["scoring"]
-    pr = t.get("platform_roles") or {}
-    core_must = words_re(t["title_must_match_one"])
-    cr = t.get("csm_roles") or {}
-    csm_title = words_re(cr["titles"]) if cr.get("titles") else None
-    csm_terms = words_re(cr.get("require_terms") or ["kubernetes"])
-    must = words_re(t["title_must_match_one"] + pr.get("titles", []) + cr.get("titles", []))
-    plat_title = words_re(pr["titles"]) if pr.get("titles") else None
-    plat_skip = words_re(pr["skip_title"]) if pr.get("skip_title") else None
-    plat_k8s = words_re(pr.get("require_k8s") or ["kubernetes"])
-    plat_tools = words_re(pr["require_handson"]) if pr.get("require_handson") else None
+    must = words_re(t["title_must_match_one"])
     skip = words_re(t["title_skip"])
     strong = words_re(t["domain_strong"])
     domain = words_re(t["domain_strong"] + t["domain_weak"])
-    infra = words_re(t["domain_infra"]) if t.get("domain_infra") else None
     auto_dropped = []
-    k8s_cos = words_re(t["k8s_only_companies"]) if t.get("k8s_only_companies") else None
-    k8s_terms = words_re(t.get("k8s_only_terms") or ["kubernetes"])
-    k8s_title_skip = words_re(t["k8s_only_title_skip"]) if t.get("k8s_only_title_skip") else None
     agencies = [a.lower() for a in t["staffing_agencies"]]
     excluded = words_re(t["excluded_companies"]) if t.get("excluded_companies") else None
     cutoff = (NOW - timedelta(days=days)).date().isoformat()
     feed_cutoff = (NOW - timedelta(days=t["max_age_days_feeds"])).date().isoformat()
     seen_urls, seen_keys = load_seen(cfg)
-    ai_labs = words_re(t["ai_lab_companies"]) if t.get("ai_lab_companies") else None
     kept, reasons, batch_keys = [], {}, set()
 
     cur = [None]
@@ -661,48 +630,21 @@ def prefilter(jobs, cfg, days, rejects=None):
         else:
             if not must.search(title):
                 drop("title"); continue
-            j["csm_role"] = bool(csm_title and csm_title.search(title) and not core_must.search(title))
-            exempt = r"technical (customer )?(account|success) manager" + (r"|customer success manager" if j["csm_role"] else "")
-            if skip.search(re.sub(exempt, "", title, flags=re.I)):
+            if skip.search(re.sub(r"technical (customer )?(account|success) manager", "", title, flags=re.I)):
                 drop("title skip word"); continue
         if excluded and (excluded.search(j["company"]) or excluded.search(urllib.parse.urlparse(j["url"] or "").netloc)):
             drop("excluded company"); continue
-        if j.get("csm_role") and not csm_terms.search(f"{title} {j['description']}"):
-            drop("csm role: no Kubernetes/cloud-native term"); continue
-        j["platform_role"] = bool(plat_title and plat_title.search(title) and not core_must.search(title))
-        if j["platform_role"]:
-            # hands-on platform roles: need a platform-type title, a Kubernetes term and an IaC/GitOps/CI tool
-            if plat_skip and j["source"] != "hn" and plat_skip.search(title):
-                drop("platform role: off-target title"); continue
-            body = f"{title} {j['description']}"
-            if not plat_k8s.search(body):
-                drop("platform role: no Kubernetes term"); continue
-            if plat_tools and len({m.lower() for m in plat_tools.findall(body)}) < pr.get("min_handson", 1):
-                drop("platform role: no IaC/GitOps/CI term"); continue
-        if k8s_cos and (k8s_cos.search(j["company"]) or k8s_cos.search(urllib.parse.urlparse(j["url"] or "").netloc)):
-            if k8s_title_skip and k8s_title_skip.search(title):
-                drop("k8s-only company: security title"); continue
-            if not k8s_terms.search(f"{title} {j['description']}"):
-                drop("k8s-only company: no Kubernetes term"); continue
         if any(a in j["company"].lower() for a in agencies):
             drop("staffing agency"); continue
         if j["posted_at"] and j["posted_at"] < (feed_cutoff if j["source"] in ATS_SOURCES else cutoff):
             drop("too old"); continue
         where = classify_location(j, t)
-        lab = bool(ai_labs and ai_labs.search(j["company"]))
-        j["ai_lab"] = lab
-        j["soft_away"] = False
-        if where == "other" and lab and (US_RE.search(j["location"]) or AWAY_RE.search(j["location"])):  # US places only
-            j["soft_away"] = True  # AI lab, on-site/hybrid elsewhere: kept, scored lowest (scoring.ai_lab_away)
-        elif where in ("non-us", "other"):
+        if where in ("non-us", "other"):
             drop(f"location {where}"); continue
         blob = f"{title} {j['description']}"
         hits = sorted({m.lower() for m in strong.findall(blob)})
         if j["source"] not in ATS_SOURCES and not hits:
             drop("no strong theme (aggregator)"); continue
-        infra_hits = sorted({m.lower() for m in infra.findall(blob)}) if infra and not hits else []
-        if len(infra_hits) < sc.get("infra_min_hits", 2):
-            infra_hits = []
         key = norm_key(j["company"], title)
         if j["url"] in seen_urls or key in seen_keys:
             drop("already seen"); continue
@@ -712,12 +654,9 @@ def prefilter(jobs, cfg, days, rejects=None):
         j["key"] = key
         j["location_class"] = where
         j["strong_hits"] = hits
-        j["infra_hits"] = infra_hits
         j["weak_hits"] = sorted({m.lower() for m in domain.findall(blob)} - set(hits))
         j["territory"], j["territory_evidence"] = territory(j)
-        if j["territory"] == "drop" and lab:
-            j["soft_away"] = True
-        elif j["territory"] == "drop":
+        if j["territory"] == "drop":
             drop("territory elsewhere")
             auto_dropped.append({"company": j["company"], "title": title, "reason": j["territory_evidence"]})
             continue
@@ -725,8 +664,6 @@ def prefilter(jobs, cfg, days, rejects=None):
         sal = j["salary_parsed"] or {}
         top = sal.get("base_hi") or sal.get("ote_hi")  # floor applies to the TOP end of the range: keep any posting whose range reaches it
         floor = t["salary_floor"] if "base_hi" in sal else t.get("ote_floor", t["salary_floor"])
-        if j.get("csm_role"):
-            floor = cr.get("salary_floor", floor) if "base_hi" in sal else cr.get("ote_floor", floor)
         if top and top < floor:
             drop("salary below floor")
             auto_dropped.append({"company": j["company"], "title": title,

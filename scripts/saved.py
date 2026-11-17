@@ -174,8 +174,6 @@ def score_saved(limit=60, log=print):
                     continue
                 if j["strong_hits"]:
                     tier = "A" if pts >= sc["a_tier"] else "B" if pts >= sc["b_tier"] else "C"
-                elif j.get("infra_hits"):
-                    tier = "A" if pts >= sc["b_tier"] and fj.infra_salary_high(j, sc) else "B" if pts >= sc["b_tier"] else "C"
                 else:
                     tier = "C"
                 gaps = " ".join(x for x in (rc.det_gaps(j, locnote), r["gaps"]) if x)

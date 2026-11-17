@@ -34,7 +34,7 @@ Read their resume if they gave one (it stays local). Then propose, and let them 
 - **Angles** (`angles.list`): 3 to 6 short labels that group their jobs by flavor (for a pre-sales engineer in observability: "Observability", "Cloud-native", "AI Infrastructure", "Other"). For each: `name`, a `describe` sentence for the scoring model, and `terms` (theme words that pick that angle in rules-only mode). Set `angles.default` to the catch-all label. Write them in the user's field's language; the shipped angles are only an example.
 - **Core theme** (`judge.core_theme`): one sentence finishing "a strong match is a role that centers on ...". Leave `judge.infra_theme` empty unless they want a lower-weight adjacent market.
 - 3 to 6 **web queries** for discovery (`web_queries`), written the way they would search a job board.
-Optional tracks, off unless they ask: `platform_roles`, `csm_roles`, `domain_infra`, `ai_lab_companies`, `k8s_only_companies`. Mention they exist; do not push them.
+Keep it plain. Do not add special-case filters during setup. If they ask for something unusual (a company treated differently, a special role type, a minimum for one kind of role), explain that it is not built in and point them to `docs/FILTER-IDEAS.md`, which shows how to ask Claude to add it.
 
 ## Step 3: location and pay
 - Remote only, or remote plus a home area? Fill `targeting.home_metro_terms` (cities/areas, lower case, ambiguous towns with the state, e.g. "georgetown, tx"), `home_territory_terms` (region words like "south central"), and `home_state` (two letters).
