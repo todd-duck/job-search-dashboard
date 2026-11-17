@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Pipeline</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6676; --line: #e2e5ea;
+    --accent: #2f6fec; --accent-text: #ffffff; --chip: #eef1f5; --mark: #ffe58a; --mark-text: #1d2330;
+    --a: #127a46; --b: #8a6100; --c: #8b95a5; --danger: #b42318; --ok-bg: #e9f7ef; --ok-text: #127a46;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151b; --panel: #1a1e26; --text: #e6e9ef; --muted: #98a1b2; --line: #2b313c;
+      --accent: #5b8ff9; --accent-text: #0d1117; --chip: #242a35; --mark: #6b5a12; --mark-text: #fff6d0;
+      --a: #4cc38a; --b: #e0b341; --c: #7d8798; --danger: #f97066; --ok-bg: #16301f; --ok-text: #4cc38a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+           padding: 16px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+  h1 { font-size: 18px; margin: 0; }
+  .titlerow { display: flex; align-items: center; gap: 8px; }
+  a.folderlink { cursor: pointer; text-decoration: underline; }
+  #diag { margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 13px; max-width: 640px; }
+  #diag ul { margin: 6px 0; padding-left: 18px; }
+  #prog { margin-top: 8px; max-width: 640px; }
+  #prog .track { height: 8px; border-radius: 999px; background: var(--chip); overflow: hidden; }
+  #prog .fill { height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .6s ease; }
+  .light { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
+  .light.ok { background: var(--a); box-shadow: 0 0 6px var(--a); }
+  .light.bad { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+  .counts { color: var(--muted); font-size: 13px; }
+  .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+           padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button:disabled { opacity: .6; cursor: wait; }
+  main { padding: 16px; max-width: 1500px; margin: 0 auto; }
+  .filters { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+             display: grid; gap: 12px; margin-bottom: 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .row label.lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; min-width: 64px; }
+  input[type=text] { font: inherit; flex: 1 1 260px; min-width: 0; padding: 8px 10px; border-radius: 8px;
+                     border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  .chip { border-radius: 999px; padding: 4px 11px; background: var(--chip); border: 1px solid transparent; font-size: 13px; }
+  .chip.on { background: var(--accent); color: var(--accent-text); }
+  .hint { color: var(--muted); font-size: 12px; }
+  .toast { padding: 8px 12px; border-radius: 8px; background: var(--ok-bg); color: var(--ok-text); font-size: 13px; }
+  .toast.err { color: var(--danger); }
+  .tablewrap { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; cursor: pointer;
+       white-space: nowrap; user-select: none; position: sticky; top: 0; background: var(--panel); }
+  th .arrow { opacity: .7; }
+  tr.job { cursor: pointer; }
+  tr.job:hover td { background: var(--chip); }
+  tr.detail td { background: var(--bg); color: var(--text); }
+  .detail-grid { display: grid; gap: 6px; padding: 4px 2px; }
+  .detail-grid b { color: var(--muted); font-weight: 600; }
+  .tier { font-weight: 700; }
+  .tier.A { color: var(--a); } .tier.B { color: var(--b); } .tier.C { color: var(--c); }
+  .status, td[data-k="Found"], td[data-k="Score"], td[data-k="ID"] { white-space: nowrap; }
+  .sec { font-size: 11px; color: var(--muted); }
+  mark { background: var(--mark); color: var(--mark-text); border-radius: 3px; padding: 0 1px; }
+  a { color: var(--accent); }
+  .st { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-width: 210px; }
+  .st select { padding: 4px 6px; }
+  .st input { font: inherit; padding: 4px 7px; border-radius: 6px; border: 1px solid var(--line);
+              background: var(--bg); color: var(--text); width: 150px; }
+  .st .save { padding: 3px 9px; font-size: 12px; }
+  .st .undo { padding: 3px 7px; font-size: 12px; }
+  tr.dirty td { box-shadow: inset 3px 0 0 var(--b); }
+  tr.dirty td ~ td { box-shadow: none; }
+  .since { font-size: 11px; color: var(--muted); }
+  .clbl { font-size: 11px; color: var(--muted); margin-right: 6px; white-space: nowrap; cursor: pointer; } .clbl input { vertical-align: -2px; margin-right: 3px; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; margin-top: 3px; }
+  .badge.due { background: var(--danger); color: var(--panel); font-weight: 600; }
+  .badge.soon { background: var(--chip); color: var(--muted); }
+  .badge.prep { background: var(--ok-bg); color: var(--ok-text); }
+  .notes { display: grid; gap: 4px; margin-top: 6px; }
+  .note { display: flex; gap: 8px; align-items: baseline; }
+  .note .d { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .note button { padding: 0 6px; font-size: 12px; line-height: 18px; }
+  .addnote { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .addnote input { flex: 1 1 260px; font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line);
+                   background: var(--panel); color: var(--text); }
+  .dactions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .empty { padding: 30px; text-align: center; color: var(--muted); }
+  .sugg { margin-top: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .sugg h2 { font-size: 14px; margin: 0 0 6px; }
+  .sg { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-top: 1px solid var(--line); }
+  .sg:first-of-type { border-top: 0; }
+  .sg .txt { flex: 1; }
+  .sg .btns { display: flex; gap: 6px; flex: none; }
+  .fbar { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 13px; }
+  .fbar .nm { width: 130px; } .fbar .bar { height: 14px; background: var(--accent, #3b82f6); border-radius: 3px; min-width: 2px; }
+  .fbar .rj { color: #9b1c1c; font-size: 12px; }
+  .ftbl { border-collapse: collapse; font-size: 13px; margin: 6px 0 10px; } .ftbl td, .ftbl th { padding: 2px 12px 2px 0; text-align: left; font-weight: normal; }
+  .ftbl .small { color: var(--muted, #888); } .fform { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px 12px; margin-top: 4px; }
+  .jev { display: grid; grid-template-columns: 82px 1fr auto; gap: 2px 10px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .jev .d { color: var(--muted, #888); } .jev .sub { grid-column: 2 / 4; color: var(--muted, #888); font-size: 12px; } .jev button { font-size: 12px; padding: 1px 6px; }
+  .jform { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 6px 0; background: var(--panel); } .jform textarea { width: 100%; font: inherit; font-size: 13px; min-height: 48px; }
+  .jrej { border-left: 3px solid #c0392b; padding: 2px 10px; margin: 6px 0; font-size: 13px; } .whytxt { white-space: pre-wrap; font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .fform label { display: flex; flex-direction: column; font-size: 12px; } .fform input, .fform select { font-size: 13px; }
+  button.prep { font-size: 12px; padding: 2px 8px; margin-top: 4px; }
+  .badge.run { background: #fff3cd; color: #7a5b00; }
+  .badge.fail { background: #fde2e2; color: #9b1c1c; }
+  .menu { position: relative; }
+  .menu summary { list-style: none; font: inherit; border: 1px solid var(--line); background: var(--panel); padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+  .menu summary::-webkit-details-marker { display: none; }
+  .menupanel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 6; min-width: 230px; display: grid; gap: 4px; padding: 8px;
+               background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .menupanel button { text-align: left; border: 0; background: transparent; }
+  .menupanel button:hover { background: var(--chip); }
+  .badge.newb { background: var(--accent); color: var(--accent-text); font-weight: 600; margin-left: 4px; }
+  tr.job.focus td { background: var(--chip); }
+  tr.job.focus td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  tr.job.sel td { background: var(--chip); }
+  .views { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip.view .x { margin-left: 6px; opacity: .6; }
+  .triage { display: flex; gap: 6px; margin-top: 4px; }
+  .triage button { padding: 2px 10px; font-size: 12px; }
+  .passchips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; max-width: 300px; }
+  .passchips .chip { font-size: 12px; padding: 2px 9px; }
+  .passchips input { flex: 1 1 120px; min-width: 100px; padding: 3px 7px; font-size: 12px; }
+  .linkbtn { border: 0; background: transparent; color: inherit; text-decoration: underline; padding: 0 4px; }
+  #drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); z-index: 5; overflow-y: auto; background: var(--panel);
+            border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0,0,0,.14); }
+  #drawer .dhead { position: sticky; top: 0; display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; padding: 14px 16px;
+                   background: var(--panel); border-bottom: 1px solid var(--line); }
+  #drawer .dbtns { display: flex; gap: 6px; align-items: center; flex: none; }
+  #drawer .dbtns button { padding: 3px 9px; }
+  #dBody { padding: 12px 16px 40px; }
+  @media (min-width: 1100px) { body.drawer-open main { margin-right: 540px; max-width: none; } }
+  .overlay { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; background: rgba(0,0,0,.4); }
+  .overlay[hidden] { display: none; }
+  .overlay > div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; max-width: 460px; }
+  kbd { font: 12px ui-monospace, Menlo, monospace; background: var(--chip); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+  .tune h3 { font-size: 13px; margin: 12px 0 4px; }
+  .tune table { width: 100%; font-size: 13px; }
+  .tune th { position: static; cursor: default; }
+  .tune input[type=text] { flex: none; width: 210px; padding: 3px 7px; font-size: 13px; }
+  .badge.bad { background: #fde2e2; color: #9b1c1c; } .badge.warn { background: #fff3cd; color: #7a5b00; }
+  @media (max-width: 760px) {
+    thead { display: none; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    tr.job { border-bottom: 1px solid var(--line); padding: 8px 0; }
+    td { border: 0; padding: 3px 12px; }
+    td[data-k]::before { content: attr(data-k) ": "; color: var(--muted); font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="titlerow"><h1>Job Pipeline</h1><span class="light" id="runLight"></span></div>
+    <div class="counts" id="counts">Loading…</div>
+    <div class="counts"><span id="runInfo"></span> <button id="whyBtn" hidden style="padding:2px 8px;font-size:12px">What failed?</button></div>
+    <div id="prog" hidden><div class="counts" id="progText"></div><div class="track"><div class="fill" id="progFill"></div></div></div>
+    <div id="diag" hidden></div>
+  </div>
+  <div class="actions">
+    <span id="toast"></span>
+    <button id="dueBtn" hidden title="Show only jobs due for a follow-up"></button>
+    <button id="introAll" hidden title="Search your LinkedIn (read-only) for likely hiring managers and shared connections at every Apply/Applied company that hasn't been searched. Sends nothing."></button>
+    <button id="applyAll" class="primary" hidden title="Tailor a resume for every Apply row that has no folder yet, plus a cover letter for each row whose box is checked. Never submits anything."></button>
+    <button id="saveall" class="primary" hidden title="Save every changed status">Save all</button>
+    <details class="menu" id="moreMenu"><summary>More ▾</summary><div class="menupanel">
+      <button id="savedSync" title="Read your LinkedIn Job Tracker 'Saved' list (read-only, in your Chrome), add new jobs as Saved rows, then read and score each one. Changes nothing on LinkedIn."></button>
+      <button id="whyNotBtn" title="Why applications stall: where they drop off, rejection causes, recurring gaps, and fixes">Why not?</button>
+      <button id="funnelBtn" title="Where your applications stop: recruiter screen, hiring manager, rejection stage, comp quoted vs band">Funnel</button>
+      <button id="tuneBtn" title="Titles the filter dropped that look like your roles, and how each job source is performing">Search tuning</button>
+      <button id="refresh" title="Re-read jobs.md and jobs-archive.md (the page also refreshes itself every minute)">Refresh now</button>
+      <button id="tidy" title="Regroup jobs.md into Active / Archive (same as log_jobs.py --tidy)">Run tidy</button>
+      <button id="helpBtn">Keyboard shortcuts</button>
+    </div></details>
+  </div>
+</header>
+<main>
+  <section class="filters">
+    <div class="row"><label class="lbl">Views</label><span id="views" class="views"></span></div>
+    <div class="row">
+      <label class="lbl" for="inc">Include</label>
+      <input type="text" id="inc" placeholder='Words that must appear, e.g.  kubernetes "pre-sales" company:nvidia'>
+      <select id="mode" title="Match all include words or any of them">
+        <option value="all">match all</option><option value="any">match any</option>
+      </select>
+    </div>
+    <div class="row">
+      <label class="lbl" for="exc">Exclude</label>
+      <input type="text" id="exc" placeholder='Hide jobs mentioning any of these, e.g.  security "public sector" hybrid'>
+    </div>
+    <div class="row"><label class="lbl">Section</label><span id="f-section" class="row"></span></div>
+    <div class="row"><label class="lbl">Status</label><span id="f-status" class="row"></span>
+      <button id="f-due" class="chip" style="margin-left:12px">Follow-up due</button>
+      <button id="f-new" class="chip">New since last visit</button><button id="markSeen" class="linkbtn" title="Treat everything currently listed as seen">Mark all seen</button></div>
+    <div class="row">
+      <label class="lbl">Tier</label><span id="f-tier" class="row"></span>
+      <label class="lbl" style="margin-left:12px">Angle</label><span id="f-angle" class="row"></span>
+      <button id="clear" style="margin-left:auto">Clear filters</button>
+    </div>
+    <div class="hint">Words search every field, including why-it-fits and gaps. Use quotes for phrases.
+      Limit a word to one field with <code>company:</code>, <code>role:</code>, <code>location:</code>,
+      <code>status:</code>, <code>angle:</code>, <code>salary:</code>, <code>why:</code>, <code>gaps:</code>, <code>notes:</code>.
+      Click a row for details; click a column header to sort. Change a status with its dropdown, then Save
+      (or Enter in the reason box). Saving writes jobs.md and tidies it.</div>
+  </section>
+  <section class="sugg" id="funnelpanel" hidden></section>
+  <section class="sugg" id="whypanel" hidden></section>
+  <section class="sugg tune" id="tunepanel" hidden></section>
+  <div class="tablewrap">
+    <table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>No jobs match these filters.</div>
+  </div>
+  <section class="sugg" id="sugg" hidden><h2>Pending suggestions</h2><div id="sugg-list"></div></section>
+</main>
+<aside id="drawer" hidden>
+  <div class="dhead"><div><b id="dTitle"></b><div class="since" id="dSub"></div></div>
+    <div class="dbtns"><a id="dLink" target="_blank" rel="noopener">Open posting ↗</a><button id="dPrev" title="Previous (k)">↑</button><button id="dNext" title="Next (j)">↓</button><button id="dClose" title="Close (Esc)">✕</button></div></div>
+  <div id="dBody"></div>
+</aside>
+<div class="overlay" id="help" hidden><div>
+  <h2 style="margin:0 0 8px;font-size:16px">Keyboard shortcuts</h2>
+  <p><kbd>j</kbd> / <kbd>k</kbd> next / previous row &nbsp; <kbd>Enter</kbd> open details &nbsp; <kbd>Esc</kbd> close</p>
+  <p><kbd>a</kbd> mark Apply &nbsp; <kbd>p</kbd> Pass, then <kbd>1</kbd>–<kbd>7</kbd> picks a reason &nbsp; <kbd>u</kbd> undo</p>
+  <p><kbd>/</kbd> search &nbsp; <kbd>?</kbd> this help</p>
+  <button id="helpClose" class="primary">Got it</button>
+</div></div>
+<script>
+const COLS = [
+  ["id", "ID"], ["found", "Found"], ["company", "Company"], ["role", "Role"], ["location", "Location"],
+  ["angle", "Angle"], ["score", "Score"], ["salary", "Salary"], ["status", "Status"], ["url", "Link"],
+];
+const SEARCH_FIELDS = ["id", "company", "role", "location", "angle", "salary", "status", "why", "gaps", "posted", "section", "tier", "notes"];
+const STORE = "jobdash.v1";
+let DATA = { jobs: [], suggestions: [] };
+let openKey = null, focusKey = null, passFor = null, lastKeys = [], lastAction = null, undoTimer = null, tuning = null;
+let edits = {};  // id -> {group, reason} for unsaved status changes
+// Status rules come from the server (scripts/statuses.py) via DATA.status_meta; these fallbacks only cover the first paint.
+const FALLBACK_META = { reasoned: ["Pass", "Closed", "Rejected", "Covered"], open: ["New", "Saved", "Apply", "Applied", "Interviewing"], triage: ["New", "Saved"],
+                        cover_auto: ["New", "Saved"], cover_explicit: ["New", "Saved", "Apply", "Applied"], order: ["Interviewing", "Applied", "Apply", "New"], choices: [] };
+const meta = () => DATA.status_meta || FALLBACK_META;
+function splitStatus(s) {  // "Pass: too post-sales" / "Pass (salary)" -> {group: "Pass", reason: "..."}
+  const m = String(s || "").match(/^\s*([A-Za-z]+)\s*(?:[:(]\s*(.*?)\)?\s*)?$/);
+  return m ? { group: m[1], reason: (m[2] || "").trim() } : { group: s, reason: "" };
+}
+const compose = (e) => e.group + (meta().reasoned.includes(e.group) && e.reason.trim() ? ": " + e.reason.trim() : "");
+const dirty = (j) => edits[j.id] && compose(edits[j.id]) !== j.status;
+function editOf(j) { return edits[j.id] || splitStatus(j.status); }
+function updateSaveAll() {
+  const n = DATA.jobs.filter(dirty).length;
+  $("saveall").hidden = !n; $("saveall").textContent = `Save all (${n})`;
+}
+let jf = null;  // open journey form: {id, kind: "event" | "reject", index}
+let state = { inc: "", exc: "", mode: "all", section: ["Active"], status: [], tier: [], angle: [], due: false, newOnly: false, multi: false, views: [], tune: false, sort: ["", 1] };
+
+try { Object.assign(state, JSON.parse(localStorage.getItem(STORE) || "{}")); } catch (e) {}
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {} };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// "kubernetes \"pre-sales\" company:nvidia" -> [{field:null, text:"kubernetes"}, {field:null,text:"pre-sales"}, {field:"company", text:"nvidia"}]
+function terms(q) {
+  const out = [];
+  const re = /(?:(\w+):)?(?:"([^"]+)"|(\S+))/g;
+  let m;
+  while ((m = re.exec(q || ""))) {
+    const field = m[1] && SEARCH_FIELDS.includes(m[1].toLowerCase()) ? m[1].toLowerCase() : null;
+    const text = (m[2] ?? (field ? m[3] : (m[1] ? m[1] + ":" : "") + m[3]) ?? "").toLowerCase().trim();
+    if (text) out.push({ field, text });
+  }
+  return out;
+}
+const val = (j, f) => f === "notes" ? (j.notes || []).map((n) => n.text).join(" \u2022 ") : j[f];
+const hay = (j, field) => (field ? [val(j, field)] : SEARCH_FIELDS.map((f) => val(j, f))).join(" \u2022 ").toLowerCase();
+const isDue = (j) => !!(j.followup && j.followup.due);
+const hit = (j, t) => hay(j, t.field).includes(t.text);
+
+const SEEN_KEY = "jobdash.seenIds.v1";
+let seenIds = null;
+try { const raw = localStorage.getItem(SEEN_KEY); if (raw) seenIds = new Set(JSON.parse(raw)); } catch (e) {}
+const isNew = (j) => !!seenIds && !seenIds.has(j.id);
+function markAllSeen() {
+  seenIds = new Set(DATA.jobs.map((j) => j.id));
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seenIds])); } catch (e) {}
+}
+
+// Companies that take one application per candidate: group postings by company so you apply once and cover the rest.
+let coFor = null, coMap = null;
+const ckey = (j) => String(j.company || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+function co() {
+  if (coFor !== DATA) { coFor = DATA; coMap = new Map(); DATA.jobs.forEach((j) => { if (j.section === "Archive file") return; const k = ckey(j); (coMap.get(k) || coMap.set(k, []).get(k)).push(j); }); }
+  return coMap;
+}
+const siblings = (j) => (co().get(ckey(j)) || []).filter((x) => x !== j && [...meta().open, "Covered"].includes(x.status_group));
+const isMulti = (j) => meta().open.includes(j.status_group) && siblings(j).some((x) => meta().open.includes(x.status_group));
+
+function filtered() {
+  const inc = terms(state.inc), exc = terms(state.exc);
+  return DATA.jobs.filter((j) => {
+    if (state.section.length && !state.section.includes(j.section)) return false;
+    if (state.status.length && !state.status.includes(j.status_group)) return false;
+    if (state.tier.length && !state.tier.includes(j.tier)) return false;
+    if (state.angle.length && !state.angle.includes(j.angle)) return false;
+    if (state.due && !isDue(j)) return false;
+    if (state.newOnly && !isNew(j)) return false;
+    if (state.multi && !isMulti(j)) return false;
+    if (inc.length && !(state.mode === "all" ? inc.every((t) => hit(j, t)) : inc.some((t) => hit(j, t)))) return false;
+    if (exc.some((t) => hit(j, t))) return false;
+    return true;
+  });
+}
+
+function highlight(text) {
+  const words = terms(state.inc).map((t) => t.text).filter((w) => w.length > 1);
+  let s = esc(text);
+  if (!words.length) return s;
+  const re = new RegExp("(" + words.map((w) => esc(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
+  return s.replace(re, "<mark>$1</mark>");
+}
+
+function chips(el, key, values) {
+  el.innerHTML = "";
+  values.forEach((v) => {
+    const b = document.createElement("button");
+    b.className = "chip" + (state[key].includes(v) ? " on" : "");
+    b.textContent = v;
+    b.onclick = () => {
+      state[key] = state[key].includes(v) ? state[key].filter((x) => x !== v) : [...state[key], v];
+      save(); render();
+    };
+    el.appendChild(b);
+  });
+}
+
+function sortRows(rows) {
+  const [k, dir] = state.sort;
+  if (!k) return rows;
+  return [...rows].sort((a, b) => {
+    const x = a[k], y = b[k];
+    const c = typeof x === "number" && typeof y === "number" ? x - y : String(x ?? "").localeCompare(String(y ?? ""), undefined, { numeric: true });
+    return c * dir;
+  });
+}
+
+let progTimer = null;
+function renderProgress() {
+  const p = DATA.progress || {};
+  $("prog").hidden = !p.running;
+  if (p.running) {
+    const mins = Math.floor((Date.now() / 1000 - p.started) / 60);
+    $("progText").textContent = `Job search running: ${p.phase}${p.detail ? " (" + p.detail + ")" : ""} · ${Math.round(p.pct)}% · ${mins < 1 ? "<1" : mins} min elapsed${p.pct >= 6 ? " · about " + Math.max(1, Math.round(((Date.now() / 1000 - p.started) / 60) * (100 - p.pct) / p.pct)) + " min left" : ""}`;
+    $("progFill").style.width = p.pct + "%";
+    if (!progTimer) progTimer = setInterval(async () => {
+      try { const d = await (await fetch("/api/jobs", { cache: "no-store" })).json();
+        if (DATA.jobs.some(dirty)) { DATA.progress = d.progress; DATA.run_status = d.run_status; } else DATA = d;
+        render(); } catch (e) {}
+    }, 2000);
+  } else if (progTimer) {
+    clearInterval(progTimer); progTimer = null;
+    const ok = (DATA.run_status || {}).ok; toast(ok ? "Job search finished." : "Job search failed; click What failed?", !ok);
+  }
+}
+
+function renderRunStatus() {
+  renderProgress();
+  const st = DATA.run_status || {}, fmt = (t) => t ? new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "never";
+  $("runLight").className = "light" + (st.last_run ? (st.ok ? " ok" : " bad") : "");
+  $("runLight").title = st.last_run ? (st.ok ? "Last job search succeeded" : "Last job search failed: " + (st.error || "")) : "No job search run recorded";
+  $("whyBtn").hidden = !(st.last_run && !st.ok);
+  if ($("whyBtn").hidden) $("diag").hidden = true;
+  $("runInfo").textContent = `Last run: ${fmt(st.last_run)} · Last successful run: ${fmt(st.last_success)}`;
+}
+
+async function showDiag() {
+  const box = $("diag");
+  if (!box.hidden) { box.hidden = true; return; }
+  box.hidden = false; box.textContent = "Checking…";
+  try {
+    const d = await (await fetch("/api/diagnose", { cache: "no-store" })).json();
+    box.innerHTML = `<div><b>Failed ${esc(d.when ? new Date(d.when).toLocaleString() : "")}:</b> ${esc(d.error)}</div>
+      <ul>${d.findings.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
+      ${d.fix ? `<button class="primary" id="fixBtn">${esc(d.fix.label)}</button>` : ""}`;
+    if (d.fix) $("fixBtn").onclick = async () => {
+      $("fixBtn").disabled = true;
+      const r = await fetch("/api/rerun", { method: "POST", headers: { "X-Dashboard": "1", "Content-Type": "application/json" }, body: "{}" });
+      const j = await r.json(); toast(j.message || j.error, !r.ok);
+      setTimeout(load, 1500); setTimeout(load, 5000);
+    };
+  } catch (e) { box.textContent = "Couldn't run the diagnosis: " + e.message; }
+}
+$("whyBtn").onclick = showDiag;
+
+async function openFolder(path) {
+  const r = await fetch("/api/open-folder", { method: "POST", headers: { "X-Dashboard": "1", "Content-Type": "application/json" }, body: JSON.stringify({ path }) });
+  const j = await r.json(); toast(j.message || j.error, !r.ok);
+}
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a.folderlink");
+  if (a) { e.stopPropagation(); e.preventDefault(); openFolder(a.dataset.path); }
+}, true);
+
+function render() {
+  renderRunStatus();
+  const uniq = (f, order) => {
+    const vals = [...new Set(DATA.jobs.map((j) => j[f]).filter(Boolean))];
+    return order ? order.filter((v) => vals.includes(v)).concat(vals.filter((v) => !order.includes(v))) : vals.sort();
+  };
+  chips($("f-section"), "section", ["Active", "Archive", "Archive file"]);
+  chips($("f-status"), "status", uniq("status_group", [...new Set([...meta().order, ...(meta().choices || [])])]));
+  chips($("f-tier"), "tier", uniq("tier", ["A", "B", "C"]));
+  chips($("f-angle"), "angle", uniq("angle", ["FinOps", "AI-K8s", "AI Platform", "AIOps", "Cloud/K8s", "VM Migration", "Infra/Data"]));
+
+  $("head").innerHTML = COLS.map(([k, label]) =>
+    `<th data-k="${k}">${label} <span class="arrow">${state.sort[0] === k ? (state.sort[1] > 0 ? "▲" : "▼") : ""}</span></th>`).join("");
+  document.querySelectorAll("th").forEach((th) => th.onclick = () => {
+    const k = th.dataset.k;
+    state.sort = state.sort[0] === k ? (state.sort[1] > 0 ? [k, -1] : ["", 1]) : [k, k === "score" ? -1 : 1];
+    save(); render();
+  });
+
+  const rows = sortRows(filtered());
+  const by = (s) => DATA.jobs.filter((j) => j.section === s).length;
+  $("counts").textContent = `Showing ${rows.length} of ${DATA.jobs.length} · Active ${by("Active")} · Archive ${by("Archive")} · Archive file ${by("Archive file")}`;
+  $("empty").hidden = rows.length > 0;
+  $("body").innerHTML = rows.map((j) => {
+    const key = j.section + j.id;
+    const main = `<tr class="job${dirty(j) ? " dirty" : ""}${focusKey === key ? " focus" : ""}${openKey === key ? " sel" : ""}" data-key="${esc(key)}">
+      <td data-k="ID">${highlight(j.id)}<div class="sec">${esc(j.section)}</div>${isNew(j) ? '<span class="badge newb">NEW</span>' : ""}</td>
+      <td data-k="Found">${esc(j.found)}</td>
+      <td data-k="Company"><b>${highlight(j.company)}</b>${siblings(j).length ? `<div><a class="badge soon sibfilter" data-co="${esc(j.company)}" title="Show every ${esc(j.company)} posting">+${siblings(j).length} other role${siblings(j).length > 1 ? "s" : ""}</a></div>` : ""}</td>
+      <td data-k="Role">${highlight(j.role)}</td>
+      <td data-k="Location">${highlight(j.location)}</td>
+      <td data-k="Angle">${highlight(j.angle)}</td>
+      <td data-k="Score"><span class="tier ${esc(j.tier)}">${esc(j.score)} ${j.tier ? "(" + esc(j.tier) + ")" : ""}</span></td>
+      <td data-k="Salary">${highlight(j.salary)}</td>
+      <td data-k="Status">${statusCell(j)}</td>
+      <td data-k="Link">${j.url ? `<a href="${esc(j.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">open ↗</a>` : ""}</td>
+    </tr>`;
+    const det = "";
+    return main + det;
+  }).join("");
+  document.querySelectorAll("tr.job").forEach((tr) => tr.onclick = () => {
+    const k = tr.dataset.key; focusKey = k; openKey = openKey === k ? null : k; render();
+  });
+  const keys = rows.map((j) => j.section + j.id);
+  if (focusKey && !keys.includes(focusKey)) { const i = lastKeys.indexOf(focusKey); focusKey = keys.length ? keys[Math.min(Math.max(i, 0), keys.length - 1)] : null; }
+  lastKeys = keys;
+  renderDrawer(rows);
+  renderViews();
+  renderTune();
+
+  wireStatus();
+  wireDetails();
+  const nDue = DATA.jobs.filter(isDue).length;
+  $("dueBtn").hidden = !nDue; $("dueBtn").textContent = `Follow-ups due (${nDue})`;
+  $("f-due").className = "chip" + (state.due ? " on" : "");
+  $("sugg").hidden = !DATA.suggestions.length;
+  $("sugg-list").innerHTML = DATA.suggestions.map((s, i) => `<div class="sg"><div class="txt">${esc(s.text)}</div><div class="btns">
+      ${s.kind === "other" ? "" : `<button class="primary sgacc" data-i="${i}">Accept</button>`}
+      <button class="sgden" data-i="${i}">${s.kind === "other" ? "Dismiss" : "Deny"}</button></div></div>`).join("");
+  const n = DATA.jobs.filter((j) => j.status_group === "Apply" && !j.prepared && !["queued", "running"].includes(((DATA.apply_runs || {})[j.id] || {}).state)).length;
+  $("applyAll").hidden = !n; $("applyAll").textContent = `Prepare applications (${n})`;
+  renderFunnel();
+  renderWhy();
+  const nI = DATA.jobs.filter((j) => ["Apply", "Applied"].includes(j.status_group) && !j.intros && !(["queued", "running"].includes(((DATA.intro_runs || {})[j.id] || {}).state))).length;
+  const sr = DATA.saved_run || {}, sBusy = sr.state === "running";
+  $("savedSync").disabled = sBusy; $("savedSync").textContent = sBusy ? `Syncing Saved… (${sr.step || "starting"})` : "Sync LinkedIn Saved";
+  $("introAll").hidden = !nI; $("introAll").textContent = `Find intros (${nI})`;
+  pollRuns();
+}
+
+
+
+function siblingsHTML(j) {
+  const sib = siblings(j);
+  if (!sib.length) return "";
+  const mine = meta().open.includes(j.status_group);
+  const auto = sib.filter((x) => meta().cover_auto.includes(x.status_group)).length;
+  const withApplied = sib.filter((x) => meta().cover_explicit.includes(x.status_group)).length;
+  return `<div><b>Other ${esc(j.company)} roles (${sib.length})</b> <span class="since">Many companies take one application per candidate and consider you for all their open roles.</span>
+    ${sib.map((x) => `<div style="margin:2px 0"><a class="sibopen" data-key="${esc(x.section + x.id)}" style="cursor:pointer">#${esc(x.id)} ${esc(x.role)}</a> <span class="since">${esc(x.score)}${x.tier ? " (" + esc(x.tier) + ")" : ""} · ${esc(x.status)}</span></div>`).join("")}
+    ${mine && withApplied ? `<div class="dactions"><button class="primary coverbtn" data-id="${esc(j.id)}" data-primary="${esc(j.id)}">Make #${esc(j.id)} the one application, cover ${withApplied} other${withApplied > 1 ? "s" : ""}</button>
+      ${auto && !["Applied", "Interviewing"].includes(j.status_group) ? `<button class="coverbtn" data-id="${esc(j.id)}">Pick the best-scoring for me, cover the rest</button>` : ""}</div>` : ""}</div>`;
+}
+
+function detailHTML(j) {
+  return siblingsHTML(j) + `<div class="detail-grid">
+      <div><b>Why it fits:</b> ${highlight(j.why || "—")}</div>
+      <div><b>Gaps / red flags:</b> ${highlight(j.gaps || "—")}</div>
+      <div><b>Posted:</b> ${highlight(j.posted || "—")}</div>
+      ${j.status_group === "Apply" ? `<div><b>Application prep:</b> ${j.prepared ? `folder ready — <a class="folderlink" data-path="${esc(j.prepared)}">${esc(j.prepared)}</a>`
+          : "not prepared yet — the next /job-search run offers to tailor your resume for it"} · JD saved: ${j.has_jd ? "yes" : "no (fetched at prep time)"}</div>
+      ${((DATA.apply_runs || {})[j.id] || {}).message ? `<div><b>Last prep run:</b> ${esc(DATA.apply_runs[j.id].state)} — ${esc(DATA.apply_runs[j.id].message)}${DATA.apply_runs[j.id].cost ? " ($" + DATA.apply_runs[j.id].cost + ")" : ""}</div>` : ""}` : ""}
+      ${["Apply", "Applied", "Interviewing"].includes(j.status_group) ? introBlock(j) : ""}
+      ${["Applied", "Interviewing", "Rejected", "Closed"].includes(j.status_group) ? journeyBlock(j) + `<details class="funnel-more"><summary class="since">Source, level fit and comp (older funnel form)</summary>${funnelForm(j)}</details>` : ""}
+      <div><b>Notes:</b>${(j.notes || []).length ? "" : " none yet"}
+        <div class="notes">${(j.notes || []).map((n, i) => `<div class="note"><span class="d">${esc(n.date)}</span>
+          <span>${highlight(n.text)}</span><button class="delnote" data-id="${esc(j.id)}" data-i="${i}" title="Delete note">×</button></div>`).join("")}</div>
+        <div class="addnote"><input class="noteinp" data-id="${esc(j.id)}" placeholder="Add a note (recruiter, interview date, comp details…)">
+          <button class="addnotebtn" data-id="${esc(j.id)}">Add note</button></div>
+      </div>
+      ${j.followup ? `<div class="dactions"><button class="fubtn" data-id="${esc(j.id)}">Mark followed up today</button>
+          <span class="since">Follow-up clock: ${esc(j.followup.status)} since ${esc(j.followup.since)} · due after ${j.followup.after} days</span></div>` : ""}
+      </div>`;
+}
+
+function introBlock(j) {
+  const run = (DATA.intro_runs || {})[j.id] || {}, d = j.intros;
+  const busy = run.state === "queued" || run.state === "running";
+  if (!d) return `<div><b>Warm intros:</b> ${busy ? `<span class="badge run">${run.state === "queued" ? "queued…" : "searching LinkedIn…"}</span>`
+      : `<button class="prep introbtn" data-id="${esc(j.id)}">Find intros</button> <span class="since">${run.state === "failed" || run.state === "interrupted" ? esc(run.state + ": " + (run.message || "")) : "searches your LinkedIn read-only; sends nothing"}</span>`}</div>`;
+  const who = (p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(p.name)}</a> — ${esc(p.title)} <span class="since">(${esc(p.degree)}${p.location ? ", " + esc(p.location) : ""})</span>
+      ${p.mutuals.length ? `<div class="since">via ${p.mutuals.map((m) => m.url ? `<a href="${esc(m.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(m.name)}</a>` : esc(m.name)).join(", ")}${p.mutual_count > p.mutuals.length ? ` + ${p.mutual_count - p.mutuals.length} more` : ""}</div>` : ""}`;
+  const tag = { hiring_manager: "Likely hiring manager", peer: "On the team", recruiter: "Recruiter" };
+  return `<div><b>Warm intros</b> <span class="since">(searched ${esc(d.searched)}; drafts only, you send them)</span>
+    ${d.people.map((p) => `<div style="margin:4px 0"><span class="badge ${p.role === "hiring_manager" ? "prep" : "soon"}">${tag[p.role]}</span> ${who(p)}</div>`).join("") || "<div class='since'>No contacts found.</div>"}
+    ${d.drafts.map((x, i) => `<div style="margin:6px 0"><div class="since">${esc(x.kind)} → ${esc(x.to)}</div><div style="display:flex;gap:8px;align-items:flex-start">
+        <div style="flex:1;font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px">${esc(x.text)}</div>
+        <button class="copybtn" data-text="${esc(x.text)}">Copy</button></div></div>`).join("")}
+    ${d.note ? `<div class="since">${esc(d.note)}</div>` : ""}</div>`;
+}
+
+function funnelForm(j) {
+  const f = j.funnel || {}, o = DATA.funnel_options || { stages: [], outcomes: [], sources: [], levels: [] };
+  const sel = (k, opts, v) => `<select data-fid="${esc(j.id)}" data-f="${k}"><option value="">—</option>${opts.map((x) => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>`;
+  const k = (v) => (v ? Math.round(v / 1000) : "");
+  const num = (key) => `<input type="number" min="20" step="1" style="width:80px" data-fid="${esc(j.id)}" data-f="${key}" value="${k(f[key])}">`;
+  return `<div class="funnel-form"><b>Funnel</b> <span class="since">(feeds the Funnel panel; blank = unknown)</span>
+    <div class="fform">
+      <label>Source${f.source_guess ? " (guessed)" : ""}${sel("source", o.sources, f.source)}</label>
+      <label>Furthest stage reached${sel("stage", o.stages, f.stage)}</label>
+      <label>Outcome${sel("outcome", o.outcomes, f.outcome)}</label>
+      <label>Recruiter call date<input type="date" data-fid="${esc(j.id)}" data-f="recruiter_date" value="${esc(f.recruiter_date || "")}"></label>
+      <label>Level fit (your view)${sel("level_fit", o.levels, f.level_fit)}</label>
+      <label>You quoted ($K, low–high)<span>${num("quote_lo")} – ${num("quote_hi")}</span></label>
+      <label>Posted band ($K, low–high)<span>${num("band_lo")} – ${num("band_hi")}</span></label>
+      <label>Notes<input type="text" maxlength="400" data-fid="${esc(j.id)}" data-f="notes" value="${esc(f.notes || "")}" placeholder="what the recruiter said"></label>
+    </div>
+    <div class="dactions"><button class="primary fsave" data-id="${esc(j.id)}">Save funnel</button>
+      ${f.days_to_apply != null ? `<span class="since">Applied ${f.days_to_apply} day${f.days_to_apply === 1 ? "" : "s"} after posting</span>` : ""}</div></div>`;
+}
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+function journeyBlock(j) {
+  const jr = j.journey;
+  if (!jr) return "";
+  const o = DATA.journey_options || { types: [], results: [], how: [], causes: [], interviews: [] };
+  const chip = (r) => `<span class="badge ${r === "Passed" ? "prep" : r === "Failed" ? "fail" : "soon"}">${esc(r)}</span>`;
+  const ev = jr.events || [];
+  const timeline = ev.map((e, i) => `<div class="jev"><span class="d">${esc(e.date || "date ?")}</span>
+      <span><b>${esc(e.type)}${e.label ? " · " + esc(e.label) : ""}</b>${e.who ? " · " + esc(e.who) : ""} ${chip(e.result)}${e.rating ? ` <span class="since">${"★".repeat(e.rating)}</span>` : ""}${e.notes ? `<div class="since">${esc(e.notes)}</div>` : ""}</span>
+      <span><button class="evedit" data-id="${esc(j.id)}" data-i="${i}" title="Edit or add a debrief">Edit</button> <button class="evdel" data-id="${esc(j.id)}" data-i="${i}" title="Remove this event">×</button></span>
+      ${e.asked ? `<div class="sub"><b>They asked:</b> ${esc(e.asked)}</div>` : ""}${e.went_well ? `<div class="sub"><b>Went well:</b> ${esc(e.went_well)}</div>` : ""}${e.stumbled ? `<div class="sub"><b>Stumbled:</b> ${esc(e.stumbled)}</div>` : ""}${e.resume ? `<div class="sub"><b>Resume sent:</b> ${esc(e.resume)}</div>` : ""}</div>`).join("");
+  const rej = jr.rejection;
+  const rejBlock = rej ? `<div class="jrej"><b>Rejected</b> after: ${esc(rej.step || "?")} · told by: ${esc(rej.how)} · ${esc(rej.date)}${rej.backfilled ? ` <span class="badge soon" title="Built from the old status text; correct the cause if it is wrong">cause guessed</span>` : ""}
+      <div><b>They said:</b> ${esc(rej.stated || "—")}</div><div><b>Your read:</b> ${esc(rej.cause)}${rej.detail ? " — " + esc(rej.detail) : ""}</div>${rej.fix ? `<div><b>Fix to try:</b> ${esc(rej.fix)}</div>` : ""}
+      <button class="rejedit" data-id="${esc(j.id)}">Edit</button></div>` : "";
+  const open = jf && jf.id === j.id ? jf : null;
+  const sel = (k, opts, v, blank) => `<select data-jf="${k}">${blank ? '<option value="">—</option>' : ""}${opts.map((x) => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>`;
+  let form = "";
+  if (open && open.kind === "event") {
+    const e = open.index != null ? ev[open.index] : {};
+    const inp = (k, label, ph, type) => `<label>${label}<input ${type ? `type="${type}"` : ""} data-jf="${k}" value="${esc(e[k] || (k === "date" && open.index == null ? todayStr() : ""))}" placeholder="${esc(ph || "")}"></label>`;
+    const ta = (k, label, ph) => `<label>${label}<textarea data-jf="${k}" placeholder="${esc(ph || "")}">${esc(e[k] || "")}</textarea></label>`;
+    form = `<div class="jform"><b>${open.index != null ? "Edit event" : "Log an event"}</b> <span class="since">(leave the date blank if you don't remember it)</span>
+      <div class="fform"><label>What happened${sel("type", o.types, e.type || "Recruiter call")}</label>${inp("label", "Label (for Other)", "e.g. architecture whiteboard")}${inp("date", "Date", "", "date")}
+        ${inp("who", "Who", "name and role")}<label>Result${sel("result", o.results, e.result || "Unknown")}</label>${inp("rating", "Your rating 1-5", "", "number")}${inp("resume", "Resume sent (Applied)", "file name")}</div>
+      ${ta("notes", "What happened, next steps, timing", "")}${ta("asked", "Debrief: what they asked", "questions, scenarios, objections")}${ta("went_well", "Debrief: what went well", "")}${ta("stumbled", "Debrief: where you stumbled", "")}
+      <div class="dactions"><button class="primary evsave" data-id="${esc(j.id)}">Save</button><button class="evcancel">Cancel</button></div></div>`;
+  } else if (open && open.kind === "reject") {
+    const r = rej || {};
+    form = `<div class="jform"><b>${rej ? "Edit rejection" : "Record a rejection"}</b> <span class="since">${rej ? "" : "Saving sets the status to Rejected and closes the journey."}</span>
+      <div class="fform"><label>Date<input type="date" data-jf="date" value="${esc(r.date || todayStr())}"></label><label>How you were told${sel("how", o.how, r.how || "Email")}</label>
+        <label>Your best read of the real cause${sel("cause", o.causes, r.cause || "Unknown / generic")}</label></div>
+      <label>What they said (their words)<textarea data-jf="stated">${esc(r.stated || "")}</textarea></label>
+      <label>Detail: what you think actually happened, or what the recruiter told you when you asked<textarea data-jf="detail">${esc(r.detail || "")}</textarea></label>
+      <label>One fix to try next time<input data-jf="fix" value="${esc(r.fix || "")}" style="width:100%"></label>
+      <div class="dactions"><button class="primary rejsave" data-id="${esc(j.id)}" data-update="${rej ? 1 : 0}">Save</button><button class="evcancel">Cancel</button></div></div>`;
+  }
+  const rejected = j.status_group === "Rejected";
+  return `<div><b>Journey</b> <span class="since">(each call or stage, in order; processes differ by company, so use Other for anything unusual)</span>
+    <div>${timeline || '<div class="since">No events yet.</div>'}</div>${rejBlock}${form}
+    ${open ? "" : `<div class="dactions"><button class="primary evnew" data-id="${esc(j.id)}">Log event</button>${rejected ? "" : `<button class="rejnew" data-id="${esc(j.id)}">Record rejection</button>`}</div>`}</div>`;
+}
+function renderWhy() {
+  const el = $("whypanel"), w = DATA.why_not;
+  el.hidden = !state.why || !w;
+  if (el.hidden) return;
+  const pct = (a, b) => (b ? Math.round((100 * a) / b) + "%" : "–");
+  const max = Math.max(1, ...w.reached.map((x) => x.n));
+  const oc = w.outcomes, ai = w.ai || {};
+  const seg = (s) => `<h3 style="font-size:13px;margin:10px 0 2px">${esc(s.title)}</h3><table class="ftbl"><tr><th></th><th>n</th><th>first conversation</th><th>hiring mgr</th></tr>
+      ${s.rows.map((r) => `<tr class="${r.small ? "small" : ""}"><td>${esc(r.name)}${r.small ? " (small sample)" : ""}</td><td>${r.n}</td><td>${pct(r.screen, r.n)}</td><td>${pct(r.hm, r.n)}</td></tr>`).join("")}</table>`;
+  el.innerHTML = `<h2>Why not? <span class="since">(${w.n} applications with a journey; rejections: ${oc.Rejected}, no reply: ${oc.Silent}, in process: ${oc["In process"]}, waiting: ${oc.Waiting}${oc.Offer ? ", offers: " + oc.Offer : ""})</span></h2>
+    <h3 style="font-size:13px;margin:6px 0 2px">What to do about it</h3>
+    ${w.insights.map((i) => `<div style="margin:6px 0"><b>${esc(i.title)}</b><div class="since">${esc(i.detail)}</div><div>→ ${esc(i.action)}</div></div>`).join("")}
+    <h3 style="font-size:13px;margin:10px 0 2px">How far applications get</h3>
+    ${w.reached.map((x) => `<div class="fbar"><span class="nm">${esc(x.name)}</span><span class="bar" style="width:${Math.round(260 * x.n / max)}px"></span><span>${x.n} (${pct(x.n, w.n)})</span></div>`).join("")}
+    ${Object.keys(w.endings).length ? `<div class="since">Ended at: ${Object.entries(w.endings).map(([k, v]) => `${esc(k)}: ${v.Rejected} rejected, ${v.Silent} no reply`).join(" · ")}</div>` : ""}
+    ${w.causes.length ? `<h3 style="font-size:13px;margin:10px 0 2px">Rejection causes (your read)</h3><table class="ftbl">${w.causes.map((c) => `<tr><td>${esc(c.name)}</td><td>${c.n}</td></tr>`).join("")}</table>` : ""}
+    ${w.segments.map(seg).join("")}
+    ${w.gaps.length ? `<h3 style="font-size:13px;margin:10px 0 2px">What postings ask for vs your resume</h3><table class="ftbl"><tr><th>Requirement</th><th>postings</th><th>reached a call</th><th>on resume?</th></tr>
+      ${w.gaps.map((g) => `<tr><td>${esc(g.term)}</td><td>${g.rows}${g.in_gaps ? ` (flagged as a gap ${g.in_gaps}×)` : ""}</td><td>${g.moved_pct}%</td><td>${g.missing_on_resume === null ? "?" : g.missing_on_resume ? "no" : "yes"}</td></tr>`).join("")}</table>
+      <div class="since">Keyword match on posting text, so treat "no" as a prompt to check, not a verdict.</div>` : ""}
+    ${w.rejections.length ? `<h3 style="font-size:13px;margin:10px 0 2px">Rejections on file</h3>${w.rejections.map((r) => `<div style="font-size:13px;margin:3px 0"><b>#${esc(r.id)} ${esc(r.company)}</b> — ended after ${esc(r.step)}; ${esc(r.cause)}${r.stated ? `<div class="since">${esc(r.stated.slice(0, 160))}</div>` : ""}${r.fix ? `<div class="since">Fix: ${esc(r.fix)}</div>` : ""}</div>`).join("")}` : ""}
+    <h3 style="font-size:13px;margin:12px 0 2px">Written diagnosis</h3>
+    ${ai.state === "running" ? `<div><span class="badge run">diagnosing…</span> <span class="since">started ${esc(ai.started || "")}</span></div>`
+      : `<button class="primary whyai">${ai.text ? "Run again" : "Write a diagnosis"}</button> <span class="since">Uses Claude on the data above (up to $1.50). Reads your resume; changes nothing.</span>`}
+    ${ai.state === "failed" ? `<div class="since">Last attempt failed: ${esc(ai.message || "")}</div>` : ""}
+    ${ai.text ? `<div class="since" style="margin-top:6px">${esc(ai.finished || "")}${ai.cost ? " · $" + ai.cost : ""}</div><div class="whytxt">${esc(ai.text)}</div>` : ""}`;
+}
+function renderFunnel() {
+  const el = $("funnelpanel"), st = DATA.funnel_stats;
+  el.hidden = !state.funnel || !st;
+  if (el.hidden) return;
+  const max = Math.max(1, ...st.stages.map((x) => x.n));
+  const pct = (a, b) => (b ? Math.round((100 * a) / b) + "%" : "–");
+  const seg = (title, rows) => rows.length ? `<h3 style="font-size:13px;margin:10px 0 2px">${title}</h3><table class="ftbl"><tr><th></th><th>n</th><th>recruiter</th><th>hiring mgr</th></tr>
+      ${rows.map((r) => `<tr class="${r.small ? "small" : ""}"><td>${esc(r.name)}${r.small ? " (small sample)" : ""}</td><td>${r.n}</td><td>${pct(r.recruiter, r.n)}</td><td>${pct(r.hm, r.n)}</td></tr>`).join("")}</table>` : "";
+  const c = st.comp;
+  el.innerHTML = `<h2>Application funnel <span class="since">(${st.tracked} tracked of ${st.applied_total} applied; open an Applied/Rejected row and use Funnel to record the rest)</span></h2>
+    ${st.stages.map((x) => `<div class="fbar"><span class="nm">${esc(x.name)}</span><span class="bar" style="width:${Math.round(260 * x.n / max)}px"></span>
+        <span>${x.n}${st.tracked ? " (" + pct(x.n, st.tracked) + ")" : ""}</span>${x.rejected_here ? `<span class="rj">${x.rejected_here} rejected here</span>` : ""}</div>`).join("")}
+    ${seg("By source", st.by_source)}${seg("By tier", st.by_tier)}${seg("By level fit", st.by_level)}${seg("By how soon you applied", st.by_speed)}
+    ${c.after_call_n || c.advanced_n ? `<div class="since">Comp position in band (0 = bottom, 1 = top): rejected after recruiter call ${c.after_call_avg ?? "–"} (n=${c.after_call_n}) · advanced to hiring manager ${c.advanced_avg ?? "–"} (n=${c.advanced_n})</div>` : ""}
+    <ul>${st.insights.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`;
+}
+
+function statusCell(j) {
+  const e = editOf(j), choices = DATA.status_choices || ["New", "Apply", "Applied", "Interviewing", "Pass", "Closed"];
+  const opts = (choices.includes(e.group) ? choices : [e.group, ...choices])
+    .map((c) => `<option ${c === e.group ? "selected" : ""}>${esc(c)}</option>`).join("");
+  const reason = meta().reasoned.includes(e.group)
+    ? `<input class="reason" data-id="${esc(j.id)}" value="${esc(e.reason)}" placeholder="${e.group === "Pass" ? "why? (teaches the search)" : "reason (optional)"}">` : "";
+  const d = dirty(j);
+  const triage = !d && meta().triage.includes(j.status_group) ? `<div class="triage"><button class="tri-apply primary" data-id="${esc(j.id)}" title="Mark Apply (a)">Apply</button><button class="tri-pass" data-id="${esc(j.id)}" title="Pass with a reason (p)">Pass</button></div>` : "";
+  const chips = passFor === j.id ? `<div class="passchips">${PASS_REASONS.map((r, i) => `<button class="chip passr" data-id="${esc(j.id)}" data-r="${esc(r)}">${i + 1} ${esc(r)}</button>`).join("")}<input class="passother" data-id="${esc(j.id)}" placeholder="other… (Enter)"></div>` : "";
+  return `<div class="st" onclick="event.stopPropagation()">
+      <select class="stsel" data-id="${esc(j.id)}">${opts}</select>${reason}
+      ${d ? `<button class="save primary" data-id="${esc(j.id)}">Save</button><button class="undo" data-id="${esc(j.id)}" title="Discard change">↺</button>` : ""}
+    </div>${triage}${chips}<div class="since">since ${esc(j.status_date || "")}</div>${badges(j)}`;
+}
+function badges(j) {
+  let b = "";
+  const f = j.followup;
+  if (f && f.due) b += `<span class="badge due" title="${esc(f.status)} for ${f.days} days">Follow up · ${f.days}d</span> `;
+  else if (f) b += `<span class="badge soon">follow-up in ${f.after - f.days}d</span> `;
+  if (j.journey && j.journey.silent != null) b += `<span class="badge due" title="No reply since you applied. Record it as a rejection (no response) from the row's Journey section.">No response · ${j.journey.silent}d</span> `;
+  if (j.status_group === "Apply") {
+    const run = (DATA.apply_runs || {})[j.id] || {};
+    const lbl = `<label class="clbl" title="Also write a cover letter when preparing this application (A-tier rows start checked)"><input type="checkbox" class="clchk" data-id="${esc(j.id)}" ${j.cover_letter ? "checked" : ""}> cover letter</label>`;
+    const busy = run.state === "queued" || run.state === "running";
+    if (j.prepared) {
+      b += `<a class="badge prep folderlink" data-path="${esc(j.prepared)}" title="Open ${esc(j.prepared)}">folder ready ↗</a> `;
+      if (j.has_letter) b += `<span class="badge prep" title="A cover letter is in the application folder">letter ready</span>`;
+      else if (busy) b += `<span class="badge run">${run.mode === "letter" ? (run.state === "queued" ? "letter queued…" : "writing letter…") : ""}</span>`;
+      else b += lbl + (j.cover_letter ? ` <button class="prep letterbtn" data-id="${esc(j.id)}" title="Write the cover letter into the existing folder. Never submits.">Write cover letter</button>` : "");
+    } else if (busy)
+      b += `<span class="badge run" title="${esc(run.message || "")}">${run.state === "queued" ? "queued…" : "preparing…"}</span>`;
+    else {
+      b += lbl + ` <span class="badge soon">not prepared</span> <button class="prep applybtn" data-id="${esc(j.id)}" title="Tailor the resume (and a cover letter if the box is checked) in the background. Never submits.">${run.state === "failed" || run.state === "interrupted" ? "Retry prepare" : "Prepare application"}</button>`;
+      if (run.state === "failed" || run.state === "interrupted") b += ` <span class="badge fail" title="${esc(run.message || "")}">${esc(run.state)}</span>`;
+    }
+  }
+  return b;
+}
+
+async function saveStatuses(ids) {
+  const changes = ids.map((id) => ({ id, status: compose(edits[id]) }));
+  if (changes.some((c) => c.status.startsWith("Pass") && !c.status.includes(":")) &&
+      !confirm("Pass without a reason? The next search learns from Pass reasons.")) return;
+  try {
+    const r = await fetch("/api/status", { method: "POST", headers: { "X-Dashboard": "1", "Content-Type": "application/json" },
+                                           body: JSON.stringify({ changes }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.statusText);
+    ids.forEach((id) => delete edits[id]);
+    DATA = d; render();
+    toast(d.errors && d.errors.length ? "Some not saved: " + d.errors.join("; ") : d.message, d.errors && d.errors.length);
+  } catch (e) { toast("Save failed: " + e.message, true); }
+}
+
+function wireStatus() {
+  const job = (id) => DATA.jobs.find((x) => x.id === id);
+  document.querySelectorAll(".stsel").forEach((sel) => sel.onchange = () => {
+    const j = job(sel.dataset.id), e = editOf(j);
+    edits[j.id] = { group: sel.value, reason: sel.value === splitStatus(j.status).group ? splitStatus(j.status).reason : (meta().reasoned.includes(sel.value) ? e.reason : "") };
+    render();
+    const inp = document.querySelector(`.reason[data-id="${CSS.escape(j.id)}"]`);
+    if (inp) inp.focus();
+  });
+  document.querySelectorAll(".reason").forEach((inp) => {
+    inp.oninput = () => {  // no full re-render while typing, so the cursor stays put
+      const j = job(inp.dataset.id);
+      edits[j.id] = { ...editOf(j), reason: inp.value };
+      const cell = inp.closest(".st"), has = cell.querySelector(".save");
+      if (dirty(j) && !has) {
+        cell.insertAdjacentHTML("beforeend", `<button class="save primary" data-id="${esc(j.id)}">Save</button><button class="undo" data-id="${esc(j.id)}" title="Discard change">↺</button>`);
+        wireButtons(cell);
+      } else if (!dirty(j) && has) { cell.querySelectorAll(".save,.undo").forEach((b) => b.remove()); }
+      inp.closest("tr").classList.toggle("dirty", dirty(j));
+      updateSaveAll();
+    };
+    inp.onkeydown = (ev) => { if (ev.key === "Enter" && dirty(job(inp.dataset.id))) saveStatuses([inp.dataset.id]);
+                              if (ev.key === "Escape") { delete edits[inp.dataset.id]; render(); } };
+  });
+  wireButtons(document);
+  wireTriage();
+  updateSaveAll();
+}
+function wireButtons(root) {
+  root.querySelectorAll(".save").forEach((b) => b.onclick = () => saveStatuses([b.dataset.id]));
+  root.querySelectorAll(".undo").forEach((b) => b.onclick = () => { delete edits[b.dataset.id]; render(); });
+}
+
+async function post(path, body) {
+  try {
+    const r = await fetch(path, { method: "POST", headers: { "X-Dashboard": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.statusText);
+    DATA = d; render(); toast(d.message);
+  } catch (e) { toast(e.message, true); }
+}
+function wireDetails() {
+  const addNote = (id) => {
+    const inp = document.querySelector(`.noteinp[data-id="${CSS.escape(id)}"]`);
+    if (inp && inp.value.trim()) post("/api/note", { id, text: inp.value.trim() });
+  };
+  document.querySelectorAll(".addnotebtn").forEach((b) => b.onclick = () => addNote(b.dataset.id));
+  document.querySelectorAll(".noteinp").forEach((i) => i.onkeydown = (e) => { if (e.key === "Enter") addNote(i.dataset.id); });
+  document.querySelectorAll(".delnote").forEach((b) => b.onclick = () => {
+    if (confirm("Delete this note?")) post("/api/note-delete", { id: b.dataset.id, index: +b.dataset.i });
+  });
+  document.querySelectorAll(".fubtn").forEach((b) => b.onclick = () => post("/api/followed-up", { id: b.dataset.id }));
+}
+
+function ev_(e) { e.stopPropagation(); }
+document.addEventListener("click", (ev) => {
+  const t = ev.target;
+  if (t.classList && t.classList.contains("applybtn")) {
+    ev.stopPropagation();
+    startApply([t.dataset.id]);
+  } else if (t.classList && t.classList.contains("introbtn")) {
+    ev.stopPropagation();
+    startIntros([t.dataset.id]);
+  } else if (t.classList && t.classList.contains("copybtn")) {
+    ev.stopPropagation();
+    navigator.clipboard.writeText(t.dataset.text).then(() => { t.textContent = "Copied"; setTimeout(() => { t.textContent = "Copy"; }, 1500); }, () => toast("Couldn't copy; select the text and copy it.", true));
+  } else if (t.classList && t.classList.contains("evnew")) {
+    ev_(ev); jf = { id: t.dataset.id, kind: "event", index: null }; render();
+  } else if (t.classList && t.classList.contains("evedit")) {
+    ev_(ev); jf = { id: t.dataset.id, kind: "event", index: +t.dataset.i }; render();
+  } else if (t.classList && t.classList.contains("rejnew")) {
+    ev_(ev); jf = { id: t.dataset.id, kind: "reject" }; render();
+  } else if (t.classList && t.classList.contains("rejedit")) {
+    ev_(ev); jf = { id: t.dataset.id, kind: "reject" }; render();
+  } else if (t.classList && t.classList.contains("evcancel")) {
+    ev_(ev); jf = null; render();
+  } else if (t.classList && t.classList.contains("evdel")) {
+    ev_(ev); if (confirm("Remove this event from the journey?")) post("/api/event-delete", { id: t.dataset.id, index: +t.dataset.i });
+  } else if (t.classList && (t.classList.contains("evsave") || t.classList.contains("rejsave"))) {
+    ev_(ev);
+    const id = t.dataset.id, f = {};
+    document.querySelectorAll("[data-jf]").forEach((e) => { f[e.dataset.jf] = e.value; });
+    const wasEvent = t.classList.contains("evsave"), idx = jf && jf.index;
+    jf = null;
+    if (wasEvent) post("/api/event", { id, event: f, index: idx == null ? undefined : idx });
+    else post("/api/rejection", { id, fields: f, update: t.dataset.update === "1" });
+  } else if (t.classList && t.classList.contains("whyai")) {
+    ev_(ev);
+    if (confirm("Write a diagnosis with Claude? It reads your tracker data and resume, costs up to $1.50, and changes nothing.")) post("/api/why-not-ai", {});
+  } else if (t.classList && t.classList.contains("fsave")) {
+    ev.stopPropagation();
+    const id = t.dataset.id, fields = {};
+    document.querySelectorAll(`[data-fid="${CSS.escape(id)}"]`).forEach((e) => { fields[e.dataset.f] = e.value; });
+    post("/api/funnel", { id, fields });
+  } else if (t.classList && (t.classList.contains("sgacc") || t.classList.contains("sgden"))) {
+    ev.stopPropagation();
+    const s = DATA.suggestions[+t.dataset.i], accept = t.classList.contains("sgacc");
+    let text = "";
+    if (accept && (s.kind === "rule" || s.kind === "exclude")) {
+      text = prompt("This text is added to your Learned preferences" + (s.kind === "exclude" ? " (and the company is added to excluded companies)" : "") + ". Edit it if you like:", s.default_text);
+      if (text === null) return;
+    } else if (accept && s.kind === "source" && !confirm(`Remove ${s.key} from config.json? It stops being scanned.`)) return;
+    post("/api/suggestion", { line: s.line, action: accept ? "accept" : "deny", text });
+  }
+});
+async function startApply(ids) {
+  const n = ids.length;
+  if (!confirm(`Prepare ${n} application${n > 1 ? "s" : ""} now?\n\nClaude tailors your resume (and a cover letter for A-tier) into a new folder, one at a time in the background, up to $4 each of model usage. It never submits anything; you review and apply yourself.`)) return;
+  await post("/api/apply", { ids });
+}
+async function startIntros(ids) {
+  if (!confirm(`Search your LinkedIn for intros on ${ids.length} role${ids.length > 1 ? "s" : ""}?\n\nClaude drives your logged-in Chrome, read-only: it looks up people at the company and shared connections, saves them here, and drafts notes. It never sends or connects. Up to $1.50 of model usage each.`)) return;
+  await post("/api/intros", { ids });
+}
+let pollTimer = null;
+function pollRuns() {
+  const busy = [...Object.values(DATA.apply_runs || {}), ...Object.values(DATA.intro_runs || {}), DATA.saved_run || {}, (DATA.why_not || {}).ai || {}].some((r) => r.state === "queued" || r.state === "running");
+  if (busy && !pollTimer) pollTimer = setInterval(async () => {
+    if (DATA.jobs.some(dirty)) return;  // never clobber unsaved edits mid-poll
+    const before = JSON.stringify([(DATA.why_not || {}).ai, DATA.apply_runs, DATA.intro_runs, DATA.saved_run, DATA.jobs.length, DATA.jobs.filter((j) => j.intros).length]); const wasSaved = (DATA.saved_run || {}).state;
+    try { const r = await fetch("/api/jobs", { cache: "no-store" }); const d = await r.json();
+          const done = Object.entries(d.apply_runs || {}).filter(([k, v]) => ["done", "failed"].includes(v.state) && ((DATA.apply_runs || {})[k] || {}).state !== v.state);
+          DATA = d; if (JSON.stringify([(d.why_not || {}).ai, d.apply_runs, d.intro_runs, d.saved_run, d.jobs.length, d.jobs.filter((j) => j.intros).length]) !== before) render();
+          if (wasSaved === "running" && (d.saved_run || {}).state !== "running") toast(`LinkedIn Saved: ${d.saved_run.message}`, d.saved_run.state !== "done");
+          done.forEach(([k, v]) => toast(`Row ${k}: ${v.state === "done" ? "application folder ready" : "prep failed"}${v.cost ? ` ($${v.cost})` : ""}`, v.state === "failed"));
+    } catch (e) {}
+  }, 8000);
+  if (!busy && pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function toast(msg, err) {
+  $("toast").innerHTML = msg ? `<span class="toast${err ? " err" : ""}">${esc(msg)}</span>` : "";
+  if (msg && !err) setTimeout(() => { $("toast").innerHTML = ""; }, 6000);
+}
+
+async function load() {
+  try {
+    const r = await fetch("/api/jobs", { cache: "no-store" });
+    DATA = await r.json();
+    render();
+  } catch (e) { toast("Couldn't load jobs: " + e.message, true); }
+}
+
+async function tidy() {
+  if (DATA.jobs.some(dirty) && !confirm("You have unsaved status changes. Tidy anyway (they stay unsaved)?")) return;
+  const b = $("tidy"); b.disabled = true; b.textContent = "Tidying…";
+  try {
+    const r = await fetch("/api/tidy", { method: "POST", headers: { "X-Dashboard": "1" } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.statusText);
+    DATA = d; render(); toast(d.message);
+  } catch (e) { toast("Tidy failed: " + e.message, true); }
+  b.disabled = false; b.textContent = "Run tidy";
+}
+
+$("inc").value = state.inc; $("exc").value = state.exc; $("mode").value = state.mode;
+$("inc").oninput = (e) => { state.inc = e.target.value; save(); render(); };
+$("exc").oninput = (e) => { state.exc = e.target.value; save(); render(); };
+$("mode").onchange = (e) => { state.mode = e.target.value; save(); render(); };
+$("clear").onclick = () => {
+  Object.assign(state, { inc: "", exc: "", mode: "all", section: ["Active"], status: [], tier: [], angle: [], due: false, newOnly: false, multi: false });
+  $("inc").value = ""; $("exc").value = ""; $("mode").value = "all"; save(); render();
+};
+$("refresh").onclick = () => {
+  if (DATA.jobs.some(dirty) && !confirm("Discard unsaved status changes and reload?")) return;
+  edits = {}; load();
+};
+$("f-due").onclick = () => { state.due = !state.due; save(); render(); };
+$("dueBtn").onclick = () => { state.due = true; state.section = ["Active"]; save(); render(); };
+$("saveall").onclick = () => saveStatuses(DATA.jobs.filter(dirty).map((j) => j.id));
+window.addEventListener("beforeunload", (e) => { if (DATA.jobs.some(dirty)) { e.preventDefault(); e.returnValue = ""; } });
+$("tidy").onclick = tidy;
+$("savedSync").onclick = async () => {
+  if (!confirm("Sync your LinkedIn Saved list?\n\nClaude opens your logged-in Chrome and reads the Job Tracker 'Saved' tab (read-only), adds new jobs here as Saved rows, then reads and scores each posting. It changes nothing on LinkedIn and takes a few minutes.")) return;
+  await post("/api/saved-sync", {}); pollRuns();
+};
+$("introAll").onclick = () => startIntros(DATA.jobs.filter((j) => ["Apply", "Applied"].includes(j.status_group) && !j.intros && !(["queued", "running"].includes(((DATA.intro_runs || {})[j.id] || {}).state))).map((j) => j.id));
+$("whyNotBtn").onclick = () => { state.why = !state.why; save(); render(); };
+$("funnelBtn").onclick = () => { state.funnel = !state.funnel; save(); render(); };
+$("applyAll").onclick = () => startApply(DATA.jobs.filter((j) => j.status_group === "Apply" && !j.prepared && !["queued", "running"].includes(((DATA.apply_runs || {})[j.id] || {}).state)).map((j) => j.id));
+// ---------------------------------------------------------------- quick triage, undo
+const PASS_REASONS = ["too post-sales", "wrong domain", "salary too low", "location", "too junior", "company not a fit", "closed or stale"];
+async function quickSet(id, status, opts = {}) {
+  const j = DATA.jobs.find((x) => x.id === id);
+  if (!j) return;
+  if (status === "Apply" && !opts.undo) {  // one application per company: offer to cover this posting instead
+    const have = siblings(j).find((x) => ["Apply", "Applied", "Interviewing"].includes(x.status_group));
+    if (have && confirm(`${j.company} already has #${have.id} (${have.role}) as ${have.status_group}. Companies usually take one application and consider you for all their roles.\n\nOK = mark this one "Covered: by #${have.id}"\nCancel = apply to it separately anyway`)) status = `Covered: by #${have.id}`;
+  }
+  const prev = j.status;
+  try {
+    const r = await fetch("/api/status", { method: "POST", headers: { "X-Dashboard": "1", "Content-Type": "application/json" }, body: JSON.stringify({ changes: [{ id, status }] }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.statusText);
+    if (d.errors && d.errors.length) throw new Error(d.errors.join("; "));
+    delete edits[id]; passFor = null; DATA = d; render();
+    if (opts.undo) { lastAction = null; toast(`Restored ${j.company} to ${status}`); }
+    else { lastAction = { id, prev }; showUndo(`${j.company} → ${status}`); }
+  } catch (e) { toast("Save failed: " + e.message, true); }
+}
+function showUndo(msg) {
+  $("toast").innerHTML = `<span class="toast">${esc(msg)} <button id="undoBtn" class="linkbtn">Undo (u)</button></span>`;
+  $("undoBtn").onclick = undo;
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => { lastAction = null; $("toast").innerHTML = ""; }, 12000);
+}
+function undo() { if (lastAction) { const { id, prev } = lastAction; quickSet(id, prev, { undo: true }); } }
+function wireTriage() {
+  document.querySelectorAll(".tri-apply").forEach((b) => b.onclick = () => quickSet(b.dataset.id, "Apply"));
+  document.querySelectorAll(".tri-pass").forEach((b) => b.onclick = () => { passFor = passFor === b.dataset.id ? null : b.dataset.id; render(); });
+  document.querySelectorAll(".passr").forEach((b) => b.onclick = () => quickSet(b.dataset.id, "Pass: " + b.dataset.r));
+  document.querySelectorAll(".passother").forEach((i) => { i.onkeydown = (e) => { if (e.key === "Enter" && i.value.trim()) quickSet(i.dataset.id, "Pass: " + i.value.trim()); if (e.key === "Escape") { passFor = null; render(); } }; });
+}
+
+document.addEventListener("click", async (ev) => {
+  const t = ev.target.closest(".coverbtn, .sibopen, .sibfilter");
+  if (!t) return;
+  ev.stopPropagation(); ev.preventDefault();
+  if (t.classList.contains("sibopen")) { focusKey = openKey = t.dataset.key; render(); return; }
+  if (t.classList.contains("sibfilter")) {
+    Object.assign(state, JSON.parse(JSON.stringify(VIEW_DEFAULT)), { section: ["Active", "Archive"], inc: `company:"${t.dataset.co}"` });
+    $("inc").value = state.inc; save(); render(); return;
+  }
+  const j = DATA.jobs.find((x) => x.id === t.dataset.id), prim = t.dataset.primary;
+  const sib = siblings(j).filter((x) => (prim ? meta().cover_explicit : meta().cover_auto).includes(x.status_group));
+  const p = prim ? j : (siblings(j).concat(j).filter((x) => meta().open.includes(x.status_group)).sort((a, b) => b.score - a.score)[0]);
+  if (!confirm(`${j.company}: apply once, via #${p.id} (${p.role}).\n\nMark ${sib.length} other posting${sib.length > 1 ? "s" : ""} as "Covered: by #${p.id}":\n` +
+      sib.slice(0, 12).map((x) => `  #${x.id} ${x.role} (${x.status_group})`).join("\n") + (sib.length > 12 ? `\n  …and ${sib.length - 12} more` : "") +
+      `\n\nCovered rows leave Active, get no follow-up reminders, and drop out of your funnel counts. You can restore any of them from its Status dropdown.`)) return;
+  await post("/api/cover", prim ? { id: j.id, primary: prim } : { id: j.id });
+}, true);  // capture phase: runs before the row's own click handler, so a click here doesn't also toggle the drawer
+
+document.addEventListener("click", (ev) => {  // cover-letter checkbox and "Write cover letter": handle here so the row doesn't also open
+  const t = ev.target.closest(".clchk, .letterbtn, .clbl");
+  if (!t) return;
+  ev.stopPropagation();
+  if (t.classList.contains("clchk")) post("/api/cover-letter", { id: t.dataset.id, on: t.checked });
+  else if (t.classList.contains("letterbtn")) {
+    ev.preventDefault();
+    if (confirm("Write a cover letter for this application now? Claude drafts it into the existing folder (up to $4 of model usage). It never submits anything.")) post("/api/letter", { ids: [t.dataset.id] });
+  }
+}, true);
+
+// ---------------------------------------------------------------- details drawer
+function renderDrawer(rows) {
+  const j = openKey && DATA.jobs.find((x) => x.section + x.id === openKey);
+  $("drawer").hidden = !j; document.body.classList.toggle("drawer-open", !!j);
+  if (!j) return;
+  $("dTitle").innerHTML = `${esc(j.company)} — ${esc(j.role)}`;
+  $("dSub").textContent = `#${j.id} · ${j.location || "—"} · ${j.score} ${j.tier ? "(" + j.tier + ")" : ""} · ${j.status}`;
+  $("dLink").hidden = !j.url; if (j.url) $("dLink").href = j.url;
+  $("dBody").innerHTML = detailHTML(j);
+  wireDetails();
+}
+function moveFocus(d) {
+  if (!lastKeys.length) return;
+  const i = lastKeys.indexOf(focusKey);
+  focusKey = lastKeys[Math.min(Math.max((i < 0 ? (d > 0 ? -1 : lastKeys.length) : i) + d, 0), lastKeys.length - 1)];
+  if (openKey) openKey = focusKey;
+  render();
+  const el = document.querySelector("tr.job.focus"); if (el) el.scrollIntoView({ block: "nearest" });
+}
+$("dClose").onclick = () => { openKey = null; render(); };
+$("dPrev").onclick = () => moveFocus(-1);
+$("dNext").onclick = () => moveFocus(1);
+
+// ---------------------------------------------------------------- saved views
+const VIEW_KEYS = ["inc", "exc", "mode", "section", "status", "tier", "angle", "due", "newOnly", "multi", "sort"];
+const VIEW_DEFAULT = { inc: "", exc: "", mode: "all", section: ["Active"], status: [], tier: [], angle: [], due: false, newOnly: false, multi: false, sort: ["", 1] };
+const PRESETS = [
+  { name: "New A-tier", f: { status: ["New"], tier: ["A"] } },
+  { name: "Since last visit", f: { newOnly: true } },
+  { name: "Ready to apply", f: { status: ["Apply"] } },
+  { name: "In flight", f: { status: ["Applied", "Interviewing"] } },
+  { name: "Follow-up due", f: { due: true } },
+  { name: "Multi-role companies", f: { multi: true, status: ["New", "Saved", "Apply", "Applied"] } },
+];
+const viewOf = () => Object.fromEntries(VIEW_KEYS.map((k) => [k, state[k]]));
+const sameView = (v) => JSON.stringify({ ...VIEW_DEFAULT, ...v }) === JSON.stringify(viewOf());
+function renderViews() {
+  const el = $("views");
+  const chip = (v, i, mine) => `<button class="chip view${sameView(v.f) ? " on" : ""}" data-i="${i}" data-mine="${mine ? 1 : 0}">${esc(v.name)}${mine ? '<span class="x" data-del="' + i + '" title="Delete this view">×</span>' : ""}</button>`;
+  el.innerHTML = PRESETS.map((v, i) => chip(v, i, false)).join("") + (state.views || []).map((v, i) => chip(v, i, true)).join("") +
+    `<button class="linkbtn" id="saveView">+ Save current filters as a view</button>`;
+  el.querySelectorAll(".chip.view").forEach((b) => b.onclick = (e) => {
+    const mine = b.dataset.mine === "1", i = +b.dataset.i;
+    if (e.target.dataset.del !== undefined) { state.views.splice(i, 1); save(); render(); return; }
+    Object.assign(state, JSON.parse(JSON.stringify(VIEW_DEFAULT)), (mine ? state.views : PRESETS)[i].f);
+    $("inc").value = state.inc; $("exc").value = state.exc; $("mode").value = state.mode; save(); render();
+  });
+  $("saveView").onclick = () => {
+    const name = prompt("Name this view:"); if (!name || !name.trim()) return;
+    state.views = [...(state.views || []).filter((v) => v.name !== name.trim()), { name: name.trim(), f: viewOf() }]; save(); render();
+  };
+  const n = DATA.jobs.filter(isNew).length;
+  $("f-new").className = "chip" + (state.newOnly ? " on" : ""); $("f-new").textContent = `New since last visit (${n})`;
+  $("markSeen").hidden = !n;
+}
+$("f-new").onclick = () => { state.newOnly = !state.newOnly; save(); render(); };
+$("markSeen").onclick = () => { markAllSeen(); state.newOnly = false; save(); render(); };
+if (!seenIds) setTimeout(() => { if (DATA.jobs.length) { markAllSeen(); render(); } }, 1500);  // first ever visit: nothing counts as new
+document.addEventListener("visibilitychange", () => { if (document.hidden && seenIds && DATA.jobs.length && !state.newOnly) markAllSeen(); });
+
+// ---------------------------------------------------------------- search tuning: near-miss titles + source health
+async function loadTuning() {
+  try { tuning = await (await fetch("/api/tuning", { cache: "no-store" })).json(); } catch (e) { tuning = { near_misses: [], sources: [], error: e.message }; }
+  renderTune();
+}
+function renderTune() {
+  const el = $("tunepanel"); el.hidden = !state.tune;
+  if (!state.tune) return;
+  if (!tuning) { el.textContent = "Loading…"; loadTuning(); return; }
+  const nm = tuning.near_misses || [], src = tuning.sources || [];
+  const badge = { failing: "bad", empty: "warn", "no hits yet": "soon", ok: "prep" };
+  el.innerHTML = `<h2>Search tuning <button id="tuneClose" class="linkbtn">close</button></h2>
+    <h3>Near-miss titles <span class="since">dropped by the title filter but they look like your roles. Edit the phrase, then add it as a target title (applies next search).</span></h3>
+    ${nm.length ? `<table><tr><th>Phrase</th><th>Seen</th><th>Example</th><th>Companies</th><th></th></tr>${nm.map((g, i) => `<tr>
+      <td><input type="text" class="nmphrase" data-i="${i}" value="${esc(g.phrase)}"></td><td>${g.count}</td><td>${esc(g.example)}</td><td>${esc(g.companies.join(", "))}</td>
+      <td style="white-space:nowrap"><button class="primary nmadd" data-i="${i}">Add title</button> <button class="nmhide" data-i="${i}">Hide</button></td></tr>`).join("")}</table>` : '<div class="since">Nothing left to review.</div>'}
+    <h3>Source health <span class="since">${src.filter((r) => r.verdict === "failing").length} failing · ${src.filter((r) => r.verdict === "empty").length} empty · ${src.filter((r) => r.verdict === "no hits yet").length} never produced a logged job · ${src.length} total</span></h3>
+    <table><tr><th>Source</th><th>Fetched</th><th>Logged ever</th><th>Last logged</th><th>Status</th><th></th></tr>${src.filter((r) => r.verdict !== "ok").concat(src.filter((r) => r.verdict === "ok")).slice(0, 80).map((r) => `<tr>
+      <td>${esc(r.source)}</td><td>${r.fetched}</td><td>${r.logged}</td><td>${esc(r.last_logged || "—")}</td>
+      <td><span class="badge ${badge[r.verdict]}" title="${esc(r.error || "")}">${esc(r.verdict)}${r.streak ? " ×" + r.streak : ""}</span></td>
+      <td>${r.verdict !== "ok" && r.source.includes(":") ? `<button class="srcrm" data-key="${esc(r.source)}" title="Stop scanning this source">Remove</button>` : ""}</td></tr>`).join("")}</table>
+    ${src.length > 80 ? `<div class="since">Showing the 80 that need the most attention first.</div>` : ""}`;
+  $("tuneClose").onclick = () => { state.tune = false; save(); render(); };
+  const act = async (path, body, reload) => { try { const r = await fetch(path, { method: "POST", headers: { "X-Dashboard": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) }); const d = await r.json();
+      if (!r.ok) throw new Error(d.error); toast(d.message); await loadTuning(); } catch (e) { toast(e.message, true); } };
+  el.querySelectorAll(".nmadd").forEach((b) => b.onclick = () => act("/api/promote-title", { phrase: el.querySelector(`.nmphrase[data-i="${b.dataset.i}"]`).value }));
+  el.querySelectorAll(".nmhide").forEach((b) => b.onclick = () => act("/api/dismiss-title", { phrase: nm[+b.dataset.i].phrase }));
+  el.querySelectorAll(".srcrm").forEach((b) => b.onclick = () => { if (confirm(`Stop scanning ${b.dataset.key}? It is removed from config.json (a backup is kept).`)) act("/api/remove-source", { key: b.dataset.key }); });
+}
+$("tuneBtn").onclick = () => { state.tune = !state.tune; tuning = null; save(); render(); };
+
+// ---------------------------------------------------------------- header menu, help, keyboard, auto-refresh
+document.addEventListener("click", (e) => { const m = $("moreMenu"); if (m.open && (!m.contains(e.target) || e.target.closest(".menupanel button"))) m.open = false; });
+$("helpBtn").onclick = () => { $("help").hidden = false; };
+$("helpClose").onclick = () => { $("help").hidden = true; };
+$("help").onclick = (e) => { if (e.target === $("help")) $("help").hidden = true; };
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (["input", "textarea", "select"].includes(tag)) return;
+  const j = focusKey && DATA.jobs.find((x) => x.section + x.id === focusKey);
+  if (e.key === "Escape") { if (!$("help").hidden) $("help").hidden = true; else if (passFor) { passFor = null; render(); } else if (openKey) { openKey = null; render(); } }
+  else if (e.key === "j") moveFocus(1);
+  else if (e.key === "k") moveFocus(-1);
+  else if (e.key === "Enter" && j) { openKey = openKey === focusKey ? null : focusKey; render(); }
+  else if (e.key === "a" && j && meta().triage.includes(j.status_group)) quickSet(j.id, "Apply");
+  else if (e.key === "p" && j && meta().triage.includes(j.status_group)) { passFor = passFor === j.id ? null : j.id; render(); }
+  else if (/^[1-7]$/.test(e.key) && passFor) quickSet(passFor, "Pass: " + PASS_REASONS[+e.key - 1]);
+  else if (e.key === "u") undo();
+  else if (e.key === "/") { e.preventDefault(); $("inc").focus(); }
+  else if (e.key === "?") $("help").hidden = !$("help").hidden;
+});
+setInterval(async () => {  // keep the list fresh without a Refresh button; never while you're editing
+  if (document.hidden || DATA.jobs.some(dirty) || passFor || jf || ["input", "textarea", "select"].includes((document.activeElement.tagName || "").toLowerCase())) return;
+  try { const d = await (await fetch("/api/jobs", { cache: "no-store" })).json(); if (JSON.stringify(d.jobs) !== JSON.stringify(DATA.jobs) || JSON.stringify(d.run_status) !== JSON.stringify(DATA.run_status)) { DATA = d; render(); } } catch (e) {}
+}, 60000);
+
+load();
+</script>
+</body>
+</html>

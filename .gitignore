@@ -1,0 +1,17 @@
+# Everything personal stays out of git. A fresh clone is a blank slate; these files appear as you use the tool.
+config.json
+search-instructions.md
+jobs.md
+jobs-archive.md
+data/*
+!data/.gitkeep
+# resumes, letters and anything you drop in by hand
+*.docx
+*.pdf
+applications/
+# local noise
+__pycache__/
+*.pyc
+.DS_Store
+*.log
+*.bak

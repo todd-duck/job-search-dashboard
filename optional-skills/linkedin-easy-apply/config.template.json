@@ -1,0 +1,71 @@
+{
+  "_note": "Filled in by the job-search-setup interview (or by hand). Every value below is a placeholder for a fictional candidate. Never commit your real config.json.",
+  "profile": {
+    "first_name": "Alex",
+    "last_name": "Morgan",
+    "full_name": "Alex Morgan",
+    "email": "alex@example.com",
+    "phone": "5125550100",
+    "phone_country": "United States (+1)",
+    "city": "Austin, Texas, United States",
+    "linkedin": "https://www.linkedin.com/in/your-profile",
+    "website": "",
+    "resume_pdf": "~/job-search/resume/AlexMorgan-Resume.pdf",
+    "resume_source_docx": "~/job-search/resume/AlexMorgan-Resume-Master.docx",
+    "applications_dir": "~/job-search/applications",
+    "ignore_folders": [],
+    "education": "B.S., Computer Science, Example University",
+    "current_title": "Senior Solutions Engineer",
+    "current_company": "Example Corp"
+  },
+  "job_search": {
+    "keywords": ["solutions engineer", "sales engineer", "solutions architect"],
+    "_search_note": "LinkedIn's search only understands location and remote/hybrid as words in the keyword text, so each search adds a suffix such as 'remote' or 'Austin TX'.",
+    "searches": [
+      {"name": "remote", "keyword_suffix": " remote"},
+      {"name": "home area", "keyword_suffix": " Austin TX"}
+    ],
+    "url_template": "https://www.linkedin.com/jobs/search/?keywords=KEYWORDS&f_AL=true&f_TPR=TIME&sortBy=DD",
+    "time_filters": ["r86400", "r259200", "r604800"]
+  },
+  "targeting": {
+    "title_must_match_one": ["solutions engineer", "sales engineer", "solutions architect", "pre-sales", "presales", "customer engineer"],
+    "title_skip": ["junior", "associate", "intern", "director", "vp", "account executive", "recruiter"],
+    "seniority_bonus": ["senior", "sr", "principal", "staff", "lead"],
+    "domain_bonus": ["kubernetes", "observability", "cloud native", "devops", "aws", "azure", "gcp"],
+    "staffing_agencies": ["Robert Half", "Randstad", "TEKsystems", "Insight Global", "Kforce"],
+    "excluded_companies": [],
+    "home_metro_terms": ["austin", "round rock", "cedar park"],
+    "salary_floor": 150000,
+    "ote_floor": 200000,
+    "salary_bonus_at": 180000,
+    "min_score_to_apply": 4,
+    "a_tier_score": 8
+  },
+  "screening": {
+    "authorized_to_work_us": "Yes",
+    "requires_sponsorship": "No",
+    "expected_base_salary": "165000",
+    "salary_text": "Open to discussing; my target base is $165K.",
+    "current_salary": "DECLINE",
+    "notice_period": "2 weeks",
+    "start_date": "2 weeks after an offer",
+    "willing_to_relocate": "No",
+    "remote_ok": "Yes",
+    "commute_home_area": "Yes",
+    "commute_outside_home_area": "No",
+    "highest_education": "Bachelor's degree",
+    "has_bachelors": "Yes",
+    "eeo_self_identification": "Decline to answer",
+    "learned": {}
+  },
+  "years_of_experience": {
+    "_note": "Whole numbers only. Add one key per skill that screening questions ask about; the most specific matching key is used. Only true numbers: the skill never guesses.",
+    "total_professional": 12,
+    "pre-sales / sales engineering / solutions engineering": 8,
+    "cloud (AWS / Azure / GCP)": 8,
+    "Kubernetes / container orchestration": 5
+  },
+  "daily_cap": 10,
+  "submit_mode": "review"
+}

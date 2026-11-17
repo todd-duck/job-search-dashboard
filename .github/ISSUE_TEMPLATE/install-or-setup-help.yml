@@ -1,0 +1,27 @@
+name: Install or setup help
+description: Stuck installing, configuring or running for the first time
+labels: ["help wanted", "setup"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for asking. Please do NOT paste your resume, tracker or real config. Run `python3 scripts/setup.py --support-bundle`, read the output, and paste it below. It hides config values, emails, numbers and links, but check it anyway.
+  - type: textarea
+    id: what
+    attributes:
+      label: What were you trying to do, and where did you get stuck?
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and terminal (for example macOS 15, zsh)
+    validations:
+      required: true
+  - type: textarea
+    id: bundle
+    attributes:
+      label: Support bundle
+      render: text
+    validations:
+      required: true

@@ -1,0 +1,8 @@
+# Browser profile data (login sessions): never commit
+.chrome-debug-linkedin*/
+# Personal data: never commit
+config.json
+data/tracking.csv
+data/EXPERIENCE_ANSWERS.md
+assets/
+.DS_Store
