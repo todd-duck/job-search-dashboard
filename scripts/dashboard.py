@@ -989,8 +989,15 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _host_ok(self):
+        # A web page can't set the Host header, but a DNS-rebinding page gets here with its own domain in it.
+        port = self.server.server_address[1]
+        return (self.headers.get("Host") or "").lower() in (f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}")
+
     def do_GET(self):
-        if self.path in ("/", "/index.html"):
+        if not self._host_ok():
+            self._send(403, json.dumps({"error": "forbidden"}))
+        elif self.path in ("/", "/index.html"):
             self._send(200, open(HTML, "rb").read(), "text/html")
         elif self.path == "/api/tuning":
             self._send(200, json.dumps({"near_misses": near_misses(), "sources": source_health()}))
@@ -1004,7 +1011,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         # Custom header = browsers must preflight cross-site requests, which this server never approves,
         # so other websites can't change your files.
-        if self.path not in ("/api/tidy", "/api/status", "/api/note", "/api/note-delete", "/api/followed-up", "/api/apply", "/api/suggestion", "/api/funnel", "/api/cover-letter", "/api/letter", "/api/event", "/api/event-delete", "/api/rejection", "/api/why-not-ai", "/api/intros", "/api/saved-sync", "/api/rerun", "/api/open-folder", "/api/cover", "/api/promote-title", "/api/dismiss-title", "/api/remove-source") \
+        if not self._host_ok() or self.path not in ("/api/tidy", "/api/status", "/api/note", "/api/note-delete", "/api/followed-up", "/api/apply", "/api/suggestion", "/api/funnel", "/api/cover-letter", "/api/letter", "/api/event", "/api/event-delete", "/api/rejection", "/api/why-not-ai", "/api/intros", "/api/saved-sync", "/api/rerun", "/api/open-folder", "/api/cover", "/api/promote-title", "/api/dismiss-title", "/api/remove-source") \
                 or self.headers.get("X-Dashboard") != "1":
             self._send(403, json.dumps({"error": "forbidden"}))
             return

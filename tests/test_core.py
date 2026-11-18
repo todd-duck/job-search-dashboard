@@ -434,6 +434,40 @@ class TestJdCopy(unittest.TestCase):
             self.assertEqual(lj.copy_jd("007", os.path.join(d, "nope")), "no folder")
 
 
+class TestHostCheck(unittest.TestCase):
+    """DNS rebinding: a page on another domain that points at 127.0.0.1 must not be able to read or change anything."""
+
+    def setUp(self):
+        import dashboard, http.server, threading
+        self.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), dashboard.Handler)
+        self.port = self.srv.server_address[1]
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+
+    def tearDown(self):
+        self.srv.shutdown()
+        self.srv.server_close()
+
+    def call(self, method, path, host, headers=None):
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        c.putrequest(method, path, skip_host=True)
+        c.putheader("Host", host)
+        for k, v in (headers or {}).items():
+            c.putheader(k, v)
+        c.putheader("Content-Length", "2" if method == "POST" else "0")
+        c.endheaders(b"{}" if method == "POST" else None)
+        return c.getresponse().status
+
+    def test_other_hostnames_are_refused(self):
+        for host in ("evil.example.com", f"evil.example.com:{self.port}", "", f"127.0.0.1.evil.com:{self.port}"):
+            self.assertEqual(self.call("GET", "/api/jobs", host), 403, host)
+            self.assertEqual(self.call("POST", "/api/tidy", host, {"X-Dashboard": "1"}), 403, host)
+
+    def test_loopback_names_are_served(self):
+        for host in (f"127.0.0.1:{self.port}", f"localhost:{self.port}"):
+            self.assertEqual(self.call("GET", "/no-such-page", host), 404, host)  # past the host check, then not found
+
+
 if __name__ == "__main__":
     unittest.main()
 
